@@ -1,0 +1,1657 @@
+{
+  "users": [
+    {
+      "id": "usr-demo-1",
+      "fullName": "Aryak Sharma",
+      "name": "Aryak Sharma",
+      "email": "aryak@fashion.dev",
+      "mobileNumber": "9876543210",
+      "mobile": "9876543210",
+      "passwordHash": "$2b$10$mEq2TEhDOJLHCPHTj/TZ2.VS0f2nL6hnSq1ZoMJ2AVGYv399CDBsq",
+      "gender": "Men",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 240,
+      "profileImage": null,
+      "createdAt": "2025-08-15T10:00:00.000Z",
+      "updatedAt": "2025-08-15T10:00:00.000Z"
+    },
+    {
+      "id": "usr_1792212552084_sg3zqy",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792212551995@fashion.dev",
+      "mobileNumber": "9238407683",
+      "mobile": "9238407683",
+      "passwordHash": "$2b$10$S89JKBf3CJ9l9dOyVy3bkeBEy5rqnyzikcZbSJu79Uy2dG5qSWqEy",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T04:49:12.084Z",
+      "updatedAt": "2026-10-17T04:49:12.311Z"
+    },
+    {
+      "id": "usr_1792213704724_dko5tn",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792213704620@fashion.dev",
+      "mobileNumber": "9157168345",
+      "mobile": "9157168345",
+      "passwordHash": "$2b$10$PuNmSFuMtXDbgkcgfP3LMO4xD5AWPi.uBwIOSM8QmRgl06HmO6rze",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T05:08:24.724Z",
+      "updatedAt": "2026-10-17T05:08:24.902Z"
+    },
+    {
+      "id": "usr_1792216142107_ifbdiq",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792216142011@fashion.dev",
+      "mobileNumber": "9555916935",
+      "mobile": "9555916935",
+      "passwordHash": "$2b$10$OzwoaiWf8toWS3oMm8ty/ezfBcFuqn97KW.g.qooWftN2eyukvg0i",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T05:49:02.107Z",
+      "updatedAt": "2026-10-17T05:49:02.283Z"
+    },
+    {
+      "id": "usr_1792216349209_67xhg6",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792216349110@fashion.dev",
+      "mobileNumber": "9560066352",
+      "mobile": "9560066352",
+      "passwordHash": "$2b$10$wiE0Buf1y2ktqThSDMjs0OYDYiEiNu591eEfLIcdXQPCG8sq7yNJe",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T05:52:29.209Z",
+      "updatedAt": "2026-10-17T05:52:29.464Z"
+    },
+    {
+      "id": "usr_1792217194037_1t0tw8",
+      "fullName": "Arya Karande",
+      "name": "Arya Karande",
+      "email": "aryakarande45@gmail.com",
+      "mobileNumber": "9763896943",
+      "mobile": "9763896943",
+      "passwordHash": "$2b$10$sc9HiMXLlJeykPF2bgl51Oy1YFjmgFlgbDS7zMcHzppO1eKKfsU1y",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T06:06:34.037Z",
+      "updatedAt": "2026-10-17T06:06:34.037Z"
+    },
+    {
+      "id": "usr_1792218566893_0ub87l",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792218566813@fashion.dev",
+      "mobileNumber": "9716029961",
+      "mobile": "9716029961",
+      "passwordHash": "$2b$10$ExomzgicfRtCwsLQ7OlNluTAulXdXswzJymDU1oCYL7IO9.pw9Ukm",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T06:29:26.893Z",
+      "updatedAt": "2026-10-17T06:29:27.037Z"
+    },
+    {
+      "id": "usr_1792223025807_h5ciyk",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792223025723@fashion.dev",
+      "mobileNumber": "9218188021",
+      "mobile": "9218188021",
+      "passwordHash": "$2b$10$UVqizt64qOUuRQ.6FcWIG.Hk0MdnrSgkRfncMfLPEMS095gACiWbG",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T07:43:45.807Z",
+      "updatedAt": "2026-10-17T07:43:45.950Z"
+    },
+    {
+      "id": "usr_1792224208844_4g31mb",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792224208744@fashion.dev",
+      "mobileNumber": "9899963927",
+      "mobile": "9899963927",
+      "passwordHash": "$2b$10$4KDza.oz3ZzmkOSPTO.h0uRnVTGy259Eux9jZ7vguytHXdRKYoMai",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T08:03:28.844Z",
+      "updatedAt": "2026-10-17T08:03:29.031Z"
+    },
+    {
+      "id": "usr_1792238795219_utfjtb",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792238795138@fashion.dev",
+      "mobileNumber": "9646596156",
+      "mobile": "9646596156",
+      "passwordHash": "$2b$10$PvayVPJxpGHIT7znEWmvlOwnoeFlOBrof8nb6ClV6QnSVOhOQ96wW",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T12:06:35.219Z",
+      "updatedAt": "2026-10-17T12:06:35.366Z"
+    },
+    {
+      "id": "usr_1792239949543_bwf1gv",
+      "fullName": "Priya S. Verma",
+      "name": "Priya S. Verma",
+      "email": "test_1792239949445@fashion.dev",
+      "mobileNumber": "9910505432",
+      "mobile": "9910505432",
+      "passwordHash": "$2b$10$7ybfH6OEZESLbpwBUmniB.p1aYva6low7p.6.xs37UlmxcXoxgM5C",
+      "gender": "Women",
+      "role": "customer",
+      "status": "active",
+      "insiderPoints": 100,
+      "profileImage": null,
+      "createdAt": "2026-10-17T12:25:49.543Z",
+      "updatedAt": "2026-10-17T12:25:49.736Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "all",
+      "name": "All",
+      "image": "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300&auto=format&fit=crop&q=80",
+      "tag": "Trending"
+    },
+    {
+      "id": "men",
+      "name": "Men",
+      "image": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&auto=format&fit=crop&q=80",
+      "tag": "Casuals",
+      "badge": "NEW SEASON"
+    },
+    {
+      "id": "women",
+      "name": "Women",
+      "image": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+      "tag": "Western & Ethnic",
+      "badge": "POPULAR"
+    },
+    {
+      "id": "kids",
+      "name": "Kids",
+      "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?w=300&auto=format&fit=crop&q=80",
+      "tag": "Cute Sets"
+    },
+    {
+      "id": "beauty",
+      "name": "Beauty",
+      "image": "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=300&auto=format&fit=crop&q=80",
+      "tag": "Glow Up",
+      "badge": "OFFERS"
+    },
+    {
+      "id": "home",
+      "name": "Home",
+      "image": "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=300&auto=format&fit=crop&q=80",
+      "tag": "Living & Decor"
+    },
+    {
+      "id": "sports",
+      "name": "Sports",
+      "image": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=300&auto=format&fit=crop&q=80",
+      "tag": "Activewear"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-1",
+      "category": "Men",
+      "subcategory": "T-Shirts",
+      "brand": "ROADSTER",
+      "name": "Casual Cotton Solid T-Shirt",
+      "price": 499,
+      "originalPrice": 1299,
+      "discountPercent": 61,
+      "rating": 4.2,
+      "ratingCount": "3.4k",
+      "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "100% combed breathable cotton t-shirt with a ribbed crew neck and regular comfortable fit for all-day streetwear.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "colors": [
+        "Olive Green",
+        "Jet Black",
+        "Pure White"
+      ],
+      "badge": "Bestseller",
+      "specifications": {
+        "Fabric": "100% Combed Cotton",
+        "Fit": "Regular Fit",
+        "Pattern": "Solid Plain",
+        "Neckline": "Ribbed Crew Neck",
+        "Care": "Machine wash warm"
+      },
+      "isBestseller": true,
+      "isTrending": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-2",
+      "category": "Men",
+      "subcategory": "Sneakers",
+      "brand": "PUMA",
+      "name": "Court Ultra Classic Sneakers",
+      "price": 2399,
+      "originalPrice": 5999,
+      "discountPercent": 60,
+      "rating": 4.4,
+      "ratingCount": "1.8k",
+      "image": "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Clean leather upper low-top trainers with SoftFoam+ cushioning midsole for supreme comfort and durable rubber traction.",
+      "deliveryTime": "Get it in 2 Days",
+      "deliveryDays": 2,
+      "sizes": [
+        "UK 7",
+        "UK 8",
+        "UK 9",
+        "UK 10"
+      ],
+      "colors": [
+        "White / Forest Green",
+        "Triple Black",
+        "White / Navy"
+      ],
+      "badge": "Trending",
+      "specifications": {
+        "Upper": "Full Grain Synthetic Leather",
+        "Midsole": "PUMA SoftFoam+ Insert",
+        "Outsole": "Non-marking Rubber",
+        "Closure": "Lace-Up",
+        "Fastening": "Regular Arch"
+      },
+      "isTrending": true,
+      "isRecommended": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-3",
+      "category": "Men",
+      "subcategory": "Jackets and Coats",
+      "brand": "LEVI'S",
+      "name": "Washed Denim Bomber Jacket",
+      "price": 2899,
+      "originalPrice": 6499,
+      "discountPercent": 55,
+      "rating": 4.5,
+      "ratingCount": "950",
+      "image": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Timeless mid-wash denim trucker silhouette featuring pointed collar, buttoned flap chest pockets, and durable copper hardware.",
+      "deliveryTime": "Get it by Friday",
+      "deliveryDays": 3,
+      "sizes": [
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "colors": [
+        "Vintage Indigo",
+        "Acid Light Wash"
+      ],
+      "badge": "Deal of Day",
+      "specifications": {
+        "Fabric": "99% Heavy Denim Cotton, 1% Elastane",
+        "Pockets": "4 Pockets (2 welt, 2 flap)",
+        "Closure": "Shank Metal Buttons",
+        "Fit": "Standard Straight Trucker Fit"
+      },
+      "isDealOfDay": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-6",
+      "category": "Men",
+      "subcategory": "Watches",
+      "brand": "FOSSIL",
+      "name": "Grant Chronograph Leather Watch",
+      "price": 4495,
+      "originalPrice": 8995,
+      "discountPercent": 50,
+      "rating": 4.6,
+      "ratingCount": "2.5k",
+      "image": "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Vintage Roman numeral blue sunray dial framed in polished stainless steel with genuine rich brown leather buckle strap.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "One Size (44mm)"
+      ],
+      "colors": [
+        "Rose Gold / Navy",
+        "Silver / Brown"
+      ],
+      "specifications": {
+        "CaseSize": "44 mm Stainless Steel",
+        "Movement": "Quartz Chronograph with Stop Watch",
+        "WaterResistance": "5 ATM (50m)",
+        "Strap": "22mm Genuine Leather"
+      },
+      "isRecommended": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-11",
+      "category": "Men",
+      "subcategory": "Casual Shirts",
+      "brand": "H&M",
+      "name": "Relaxed Fit Oxford Cotton Shirt",
+      "price": 1299,
+      "originalPrice": 2299,
+      "discountPercent": 43,
+      "rating": 4.3,
+      "ratingCount": "1.1k",
+      "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Crisp garment-washed organic oxford cotton shirt with a button-down collar and chest patch pocket.",
+      "deliveryTime": "Get it in 2 Days",
+      "deliveryDays": 2,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "colors": [
+        "Sky Blue",
+        "Crisp White",
+        "Soft Sage"
+      ],
+      "badge": "New",
+      "specifications": {
+        "Fabric": "100% Organic Oxford Cotton",
+        "Collar": "Button-Down Collar",
+        "Fit": "Relaxed Fit",
+        "Sleeve": "Long Sleeves with buttoned cuffs"
+      },
+      "isNewArrival": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-12",
+      "category": "Men",
+      "subcategory": "Jeans",
+      "brand": "LEVI'S",
+      "name": "511 Slim Fit Stretch Dark Jeans",
+      "price": 2199,
+      "originalPrice": 4299,
+      "discountPercent": 49,
+      "rating": 4.5,
+      "ratingCount": "4.8k",
+      "image": "https://images.unsplash.com/photo-1542272604-780c96856592?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1542272604-780c96856592?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "A modern slim cut with room to move. Added stretch provides whole-day comfort without losing shape.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "30",
+        "32",
+        "34",
+        "36"
+      ],
+      "colors": [
+        "Dark Indigo Wash",
+        "Black Overdye"
+      ],
+      "badge": "Bestseller",
+      "specifications": {
+        "Fit": "Slim Through Thigh & Leg",
+        "Rise": "Mid Rise",
+        "Fabric": "98% Cotton, 2% Elastane",
+        "Closure": "Zip Fly with Button Closure"
+      },
+      "isBestseller": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-4",
+      "category": "Women",
+      "subcategory": "Handbags",
+      "brand": "BAGGIT",
+      "name": "Structured Vegan Leather Handbag",
+      "price": 1499,
+      "originalPrice": 3290,
+      "discountPercent": 54,
+      "rating": 4.1,
+      "ratingCount": "720",
+      "image": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Premium textured faux-leather tote with twin carry handles, detachable cross-body sling, and spacious multi-compartment interior.",
+      "deliveryTime": "Get it in 2 Days",
+      "deliveryDays": 2,
+      "sizes": [
+        "Regular"
+      ],
+      "colors": [
+        "Tan Brown",
+        "Blush Pink",
+        "Midnight Black"
+      ],
+      "specifications": {
+        "Material": "Cruelty-Free Vegan Faux Leather",
+        "Compartments": "3 Main Compartments with Zip Divider",
+        "Handles": "Twin Grab Handles + Adjustable Shoulder Strap"
+      },
+      "isRecommended": true,
+      "categoryId": "women",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-5",
+      "category": "Women",
+      "subcategory": "Dresses",
+      "brand": "VERO MODA",
+      "name": "Floral Print Tiered Summer Dress",
+      "price": 1799,
+      "originalPrice": 3999,
+      "discountPercent": 55,
+      "rating": 4.3,
+      "ratingCount": "1.2k",
+      "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Breezy lightweight viscose fit-and-flare dress with romantic puff sleeves, ruffled hem tier, and soft pastel floral bouquet motif.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L"
+      ],
+      "colors": [
+        "Buttercup Yellow",
+        "Soft Lilac",
+        "Mint Floral"
+      ],
+      "badge": "Trending",
+      "specifications": {
+        "Fabric": "100% Breathable Eco-Viscose",
+        "Silhouette": "Tiered Fit and Flare",
+        "Neck": "Sweetheart Neckline",
+        "Length": "Midi Knee-Length"
+      },
+      "isTrending": true,
+      "categoryId": "women",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-10",
+      "category": "Women",
+      "subcategory": "Trousers and Tights",
+      "brand": "MANGO",
+      "name": "Tailored Linen-Blend Trousers",
+      "price": 2190,
+      "originalPrice": 4590,
+      "discountPercent": 52,
+      "rating": 4.2,
+      "ratingCount": "630",
+      "image": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "High-waisted wide-leg trousers crafted from breezy linen-viscose blend, featuring front pleats and side slash pockets.",
+      "deliveryTime": "Get it by Friday",
+      "deliveryDays": 3,
+      "sizes": [
+        "26",
+        "28",
+        "30",
+        "32"
+      ],
+      "colors": [
+        "Oatmeal Beige",
+        "Sage Green",
+        "Classic Black"
+      ],
+      "specifications": {
+        "Fabric": "55% Linen, 45% Viscose",
+        "Waist": "High-Rise Tailored Waistband",
+        "Leg": "Wide Relaxed Leg"
+      },
+      "isNewArrival": true,
+      "categoryId": "women",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-13",
+      "category": "Women",
+      "subcategory": "Kurtas and Kurta Sets",
+      "brand": "W FOR WOMAN",
+      "name": "Embroidered Anarkali Kurta with Dupatta",
+      "price": 2499,
+      "originalPrice": 5999,
+      "discountPercent": 58,
+      "rating": 4.6,
+      "ratingCount": "2.1k",
+      "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Festive flare anarkali suit embellished with intricate zari embroidery on yoke, paired with gold printed chanderi dupatta.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "colors": [
+        "Royal Teal",
+        "Ruby Crimson",
+        "Mustard Gold"
+      ],
+      "badge": "Deal of Day",
+      "specifications": {
+        "Fabric": "Chanderi Silk Blend with Cotton Lining",
+        "Work": "Zari and Thread Embroidery",
+        "Includes": "Anarkali Kurta, Churidar & Dupatta"
+      },
+      "isDealOfDay": true,
+      "isBestseller": true,
+      "categoryId": "women",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-14",
+      "category": "Women",
+      "subcategory": "Tops and T-Shirts",
+      "brand": "H&M",
+      "name": "Ribbed Off-Shoulder Crop Top",
+      "price": 799,
+      "originalPrice": 1499,
+      "discountPercent": 47,
+      "rating": 4.4,
+      "ratingCount": "3.1k",
+      "image": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Soft stretch ribbed knit top designed with an elegant Bardot off-shoulder neckline and flattering body-hugging contour.",
+      "deliveryTime": "Get it in 2 Days",
+      "deliveryDays": 2,
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L"
+      ],
+      "colors": [
+        "Mocha Brown",
+        "Ivory Cream",
+        "Black"
+      ],
+      "badge": "Trending",
+      "specifications": {
+        "Fabric": "95% Viscose, 5% Elastane",
+        "Neckline": "Bardot Off-Shoulder Fold",
+        "Fit": "Slim Bodycon Fit"
+      },
+      "isTrending": true,
+      "categoryId": "women",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-7",
+      "category": "Kids",
+      "subcategory": "Boys' Clothing",
+      "brand": "GAP KIDS",
+      "name": "Printed Cotton Hooded Sweatshirt",
+      "price": 899,
+      "originalPrice": 1999,
+      "discountPercent": 55,
+      "rating": 4.5,
+      "ratingCount": "820",
+      "image": "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Super-soft fleece brushed interior with kangaroo pocket, ribbed cuffs, and iconic archival arch logo embroidery.",
+      "deliveryTime": "Get it in 3 Days",
+      "deliveryDays": 3,
+      "sizes": [
+        "3-4Y",
+        "5-6Y",
+        "7-8Y",
+        "9-10Y"
+      ],
+      "colors": [
+        "Heather Grey",
+        "Navy Blue",
+        "Bright Red"
+      ],
+      "badge": "Bestseller",
+      "specifications": {
+        "Fabric": "80% Cotton, 20% Polyester Fleece",
+        "Closure": "Pull-on Hoodie",
+        "Pocket": "Kangaroo Front Pouch"
+      },
+      "isBestseller": true,
+      "categoryId": "kids",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-15",
+      "category": "Kids",
+      "subcategory": "Girls' Clothing",
+      "brand": "MOTHERCARE",
+      "name": "Tulle Ruffle Party Fit Dress",
+      "price": 1199,
+      "originalPrice": 2499,
+      "discountPercent": 52,
+      "rating": 4.7,
+      "ratingCount": "450",
+      "image": "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Dreamy sparkle tulle skirt with soft 100% cotton inner lining to keep kids comfortable during birthdays and festive events.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "2-3Y",
+        "4-5Y",
+        "6-7Y",
+        "8-9Y"
+      ],
+      "colors": [
+        "Pastel Pink",
+        "Snow White"
+      ],
+      "badge": "New",
+      "specifications": {
+        "Lining": "100% Skin-Friendly Pure Cotton",
+        "Outer": "Multi-layered Soft Mesh Tulle",
+        "Closure": "Hidden Back Zipper"
+      },
+      "isNewArrival": true,
+      "categoryId": "kids",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-8",
+      "category": "Beauty",
+      "subcategory": "Skincare",
+      "brand": "MINIMALIST",
+      "name": "10% Vitamin C Radiance Serum",
+      "price": 599,
+      "originalPrice": 799,
+      "discountPercent": 25,
+      "rating": 4.7,
+      "ratingCount": "5.3k",
+      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Concentrated ethyl ascorbic acid stabilized with ferulic acid & hyaluronic acid to brighten dullness and fade dark spots.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "30 ml"
+      ],
+      "colors": [
+        "Transparent"
+      ],
+      "badge": "Bestseller",
+      "specifications": {
+        "KeyIngredients": "10% Ethyl Ascorbic Acid + 0.5% Ferulic Acid + Fullerenes",
+        "SkinType": "All Skin Types (Normal, Oily, Combination)",
+        "Texture": "Lightweight Quick-Absorbing Fluid"
+      },
+      "isBestseller": true,
+      "isRecommended": true,
+      "categoryId": "beauty",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-16",
+      "category": "Beauty",
+      "subcategory": "Makeup",
+      "brand": "MAYBELLINE",
+      "name": "SuperStay Matte Ink Liquid Lipstick",
+      "price": 499,
+      "originalPrice": 699,
+      "discountPercent": 29,
+      "rating": 4.5,
+      "ratingCount": "12.4k",
+      "image": "https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Flawless 16-hour transfer-proof matte finish formula with unique arrow precision tip applicator.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "5 ml"
+      ],
+      "colors": [
+        "Seductress (Nude)",
+        "Pioneer (Deep Red)",
+        "Ruler (Berry)"
+      ],
+      "badge": "Trending",
+      "specifications": {
+        "Finish": "Long-lasting Flawless Matte",
+        "Wear": "Up to 16 Hours Non-Transferable"
+      },
+      "isTrending": true,
+      "categoryId": "beauty",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-9",
+      "category": "Home",
+      "subcategory": "Cushions",
+      "brand": "D-DECOR",
+      "name": "Boho Tufted Cotton Cushion Set",
+      "price": 849,
+      "originalPrice": 1699,
+      "discountPercent": 50,
+      "rating": 4.4,
+      "ratingCount": "410",
+      "image": "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Handcrafted bohemian fringed textured cushion covers made with heavy durable weave cotton and hidden zipper enclosure.",
+      "deliveryTime": "Get it in 2 Days",
+      "deliveryDays": 2,
+      "sizes": [
+        "Set of 2 (16x16)"
+      ],
+      "colors": [
+        "Ivory & Mustard",
+        "Grey & Charcoal"
+      ],
+      "specifications": {
+        "Material": "100% Textured Loom Cotton",
+        "Dimensions": "40 cm x 40 cm (16 x 16 inches)",
+        "Closure": "Concealed Zipper"
+      },
+      "isRecommended": true,
+      "categoryId": "home",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-17",
+      "category": "Home",
+      "subcategory": "Bedsheets",
+      "brand": "SPACES",
+      "name": "Pure Cotton 300 TC Queen Bedsheet",
+      "price": 1499,
+      "originalPrice": 2999,
+      "discountPercent": 50,
+      "rating": 4.6,
+      "ratingCount": "980",
+      "image": "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Ultra-luxurious 300 thread count sateen weave sheet with 2 matching pillow cases. Hypoallergenic & colorfast.",
+      "deliveryTime": "Get it in 3 Days",
+      "deliveryDays": 3,
+      "sizes": [
+        "Queen (90x100 in)",
+        "King (108x108 in)"
+      ],
+      "colors": [
+        "Botanical Green",
+        "Sky Geometric"
+      ],
+      "badge": "Deal of Day",
+      "specifications": {
+        "ThreadCount": "300 TC Sateen Finish",
+        "Material": "100% Long-Staple Cotton",
+        "Includes": "1 Flat Sheet + 2 Pillow Covers"
+      },
+      "isDealOfDay": true,
+      "categoryId": "home",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-18",
+      "category": "Sports",
+      "subcategory": "Sports Shoes",
+      "brand": "NIKE",
+      "name": "Revolution 6 Running Road Shoes",
+      "price": 3195,
+      "originalPrice": 4995,
+      "discountPercent": 36,
+      "rating": 4.6,
+      "ratingCount": "4.2k",
+      "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Plush foam midsole delivers smooth ride on roads while breathable recycled mesh upper keeps feet dry and airy.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "UK 7",
+        "UK 8",
+        "UK 9",
+        "UK 10",
+        "UK 11"
+      ],
+      "colors": [
+        "Fire Red / Black",
+        "Triple Black",
+        "Grey / Volt"
+      ],
+      "badge": "Bestseller",
+      "specifications": {
+        "Surface": "Road Running & Gym Training",
+        "Cushioning": "Soft EVA Foam Midsole",
+        "Outsole": "Generative Computer-Designed Traction Rubber"
+      },
+      "isBestseller": true,
+      "isTrending": true,
+      "categoryId": "sports",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-19",
+      "category": "Sports",
+      "subcategory": "Gym Wear",
+      "brand": "PUMA",
+      "name": "DryCELL Active Training Track Pants",
+      "price": 1399,
+      "originalPrice": 2999,
+      "discountPercent": 53,
+      "rating": 4.4,
+      "ratingCount": "1.5k",
+      "image": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "High-performance joggers powered by moisture-wicking dryCELL technology, zippered ankle cuffs, and zip pockets.",
+      "deliveryTime": "Get it in 2 Days",
+      "deliveryDays": 2,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "colors": [
+        "Puma Black",
+        "Castlerock Grey"
+      ],
+      "badge": "Trending",
+      "specifications": {
+        "Tech": "PUMA dryCELL Moisture Wicking",
+        "Waist": "Elasticated Drawstring Waist",
+        "Pockets": "2 Secure Zipper Pockets"
+      },
+      "isTrending": true,
+      "isNewArrival": true,
+      "categoryId": "sports",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-20",
+      "category": "Men",
+      "subcategory": "Formal Shirts",
+      "brand": "ARROW",
+      "name": "Presidential Crisp Cotton Formal Shirt",
+      "price": 1599,
+      "originalPrice": 2799,
+      "discountPercent": 43,
+      "rating": 4.4,
+      "ratingCount": "1.2k",
+      "image": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Impeccably tailored premium twill cotton formal shirt with French placket and stiff semi-spread collar.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "39",
+        "40",
+        "42",
+        "44"
+      ],
+      "colors": [
+        "Pure White",
+        "Sky Blue",
+        "Light Pink"
+      ],
+      "badge": "Bestseller",
+      "specifications": {
+        "Fabric": "100% 2-Ply Supima Cotton",
+        "Fit": "Slim Formal Fit",
+        "Pattern": "Solid"
+      },
+      "isBestseller": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-21",
+      "category": "Men",
+      "subcategory": "Kurtas and Kurta Sets",
+      "brand": "MANYAVAR",
+      "name": "Silk Blend Jacquard Kurta Churidar Set",
+      "price": 2999,
+      "originalPrice": 5999,
+      "discountPercent": 50,
+      "rating": 4.6,
+      "ratingCount": "2.8k",
+      "image": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Festive jacquard weave knee-length kurta with mandarin collar and side slits, paired with cream churidar.",
+      "deliveryTime": "Get it in 2 Days",
+      "deliveryDays": 2,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "colors": [
+        "Royal Gold",
+        "Maroon Wine",
+        "Navy Blue"
+      ],
+      "badge": "Trending",
+      "specifications": {
+        "Fabric": "Art Silk Jacquard",
+        "Pattern": "Woven Ethnic Self-Design"
+      },
+      "isTrending": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-22",
+      "category": "Men",
+      "subcategory": "Suits and Blazers",
+      "brand": "RAYMOND",
+      "name": "Single-Breasted Woolen Tuxedo Blazer",
+      "price": 4999,
+      "originalPrice": 9999,
+      "discountPercent": 50,
+      "rating": 4.5,
+      "ratingCount": "870",
+      "image": "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Sophisticated notch lapel formal party blazer crafted from ultra-fine Merino wool blend with satin trim.",
+      "deliveryTime": "Get it in 3 Days",
+      "deliveryDays": 3,
+      "sizes": [
+        "38",
+        "40",
+        "42",
+        "44"
+      ],
+      "colors": [
+        "Jet Black",
+        "Midnight Navy"
+      ],
+      "specifications": {
+        "Fabric": "Fine Merino Wool Blend",
+        "Lapel": "Notch Lapel with Satin Finish"
+      },
+      "isRecommended": true,
+      "categoryId": "men",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-23",
+      "category": "Women",
+      "subcategory": "Sarees",
+      "brand": "KALYAN SILKS",
+      "name": "Pure Kanjeevaram Gold Zari Silk Saree",
+      "price": 3499,
+      "originalPrice": 7999,
+      "discountPercent": 56,
+      "rating": 4.8,
+      "ratingCount": "4.1k",
+      "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Traditional heavy zari pallu silk saree accompanied by an unstitched brocade designer blouse piece.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "5.5m + 0.8m Blouse"
+      ],
+      "colors": [
+        "Peacock Blue",
+        "Crimson Red",
+        "Temple Gold"
+      ],
+      "badge": "Bestseller",
+      "specifications": {
+        "Fabric": "Rich Kanjivaram Silk Blend",
+        "Zari": "Electroplated Golden Zari Motif"
+      },
+      "isBestseller": true,
+      "categoryId": "women",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-24",
+      "category": "Women",
+      "subcategory": "Western Wear",
+      "brand": "LEVI'S",
+      "name": "711 High-Rise Skinny Fit Stretch Jeans",
+      "price": 1999,
+      "originalPrice": 3899,
+      "discountPercent": 49,
+      "rating": 4.4,
+      "ratingCount": "2.3k",
+      "image": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Signature body-hugging sculpt stretch denim that contours every curve with effortless flexibility.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "26",
+        "28",
+        "30",
+        "32"
+      ],
+      "colors": [
+        "Medium Indigo",
+        "Jet Black"
+      ],
+      "specifications": {
+        "Fabric": "85% Cotton, 11% Poly, 4% Elastane",
+        "Rise": "High Rise"
+      },
+      "isTrending": true,
+      "categoryId": "women",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-25",
+      "category": "Beauty",
+      "subcategory": "Fragrances",
+      "brand": "JAGUAR",
+      "name": "Classic Black Eau De Toilette 100ml",
+      "price": 1850,
+      "originalPrice": 3300,
+      "discountPercent": 44,
+      "rating": 4.5,
+      "ratingCount": "3.6k",
+      "image": "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Sensual oriental fougère fragrance opening with crisp green apple, mandarin orange, and heart of spicy cardamom.",
+      "deliveryTime": "Get it in 2 Days",
+      "deliveryDays": 2,
+      "sizes": [
+        "100 ml"
+      ],
+      "colors": [
+        "Black Glass Bottle"
+      ],
+      "badge": "Deal of Day",
+      "specifications": {
+        "Type": "Eau De Toilette (EDT)",
+        "Volume": "100 ml",
+        "Origin": "France"
+      },
+      "isDealOfDay": true,
+      "categoryId": "beauty",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-26",
+      "category": "Kids",
+      "subcategory": "Kids Footwear",
+      "brand": "PUMA KIDS",
+      "name": "Smash V2 Dual Velcro Sneakers",
+      "price": 1299,
+      "originalPrice": 2499,
+      "discountPercent": 48,
+      "rating": 4.6,
+      "ratingCount": "910",
+      "image": "https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Easy on-and-off double hook-and-loop strap trainers with non-marking rubber outsoles for active playgrounds.",
+      "deliveryTime": "Get it by Tomorrow",
+      "deliveryDays": 1,
+      "sizes": [
+        "UK 10C",
+        "UK 11C",
+        "UK 12C",
+        "UK 13C"
+      ],
+      "colors": [
+        "White / Royal Blue",
+        "Black / Neon"
+      ],
+      "badge": "Trending",
+      "specifications": {
+        "Upper": "Soft Synthetic Leather",
+        "Fastening": "Double Velcro Straps"
+      },
+      "isTrending": true,
+      "categoryId": "kids",
+      "inStock": true,
+      "stockCount": 45
+    },
+    {
+      "id": "prod-27",
+      "category": "Home",
+      "subcategory": "Decor",
+      "brand": "HOME CENTRE",
+      "name": "Ceramic Table Lamp with Linen Shade",
+      "price": 1299,
+      "originalPrice": 2599,
+      "discountPercent": 50,
+      "rating": 4.4,
+      "ratingCount": "580",
+      "image": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=600&auto=format&fit=crop&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&auto=format&fit=crop&q=80"
+      ],
+      "description": "Artisanal glazed textured ceramic base paired with neutral woven linen drum shade for cozy ambient lighting.",
+      "deliveryTime": "Get it in 3 Days",
+      "deliveryDays": 3,
+      "sizes": [
+        "Height: 38 cm"
+      ],
+      "colors": [
+        "Oatmeal Speckled",
+        "Terracotta"
+      ],
+      "specifications": {
+        "Base": "Handcrafted Ceramic",
+        "BulbHolder": "E27 Standard (Bulb not included)"
+      },
+      "isRecommended": true,
+      "categoryId": "home",
+      "inStock": true,
+      "stockCount": 45
+    }
+  ],
+  "promoBanners": [
+    {
+      "id": "banner-1",
+      "title": "MEGA FASHION SALE",
+      "subtitle": "BIG STYLE • BIG SAVINGS",
+      "discount": "UP TO 70% OFF",
+      "tag": "🔥 LIMITED TIME DEALS",
+      "code": "MYNTRA70",
+      "endsIn": "08h : 42m",
+      "category": "all"
+    },
+    {
+      "id": "banner-2",
+      "title": "SUMMER CARNIVAL",
+      "subtitle": "FRESH DROPS & TRENDS",
+      "discount": "FLAT 50% OFF",
+      "tag": "✨ BRAND SPOTLIGHT",
+      "code": "STYLE50",
+      "endsIn": "14h : 20m",
+      "category": "women"
+    },
+    {
+      "id": "banner-3",
+      "title": "SNEAKER DISTRICT",
+      "subtitle": "PUMA • ADIDAS • NIKE",
+      "discount": "MIN. 40% OFF",
+      "tag": "👟 KICK SPECIALS",
+      "code": "KICKS40",
+      "endsIn": "05h : 15m",
+      "category": "men"
+    }
+  ],
+  "curatedCollections": [
+    {
+      "id": "col-1",
+      "title": "Workwear Essentials",
+      "subtitle": "Sharp silhouettes & crisp blazers",
+      "tag": "FORMAL & CHIC",
+      "image": "https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=600&auto=format&fit=crop&q=80",
+      "filterCategory": "Men",
+      "filterSubcategory": "Formal Shirts"
+    },
+    {
+      "id": "col-2",
+      "title": "Summer Pastel Florals",
+      "subtitle": "Breezy linen dresses & flowy sets",
+      "tag": "SUMMER FAVORITES",
+      "image": "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=600&auto=format&fit=crop&q=80",
+      "filterCategory": "Women",
+      "filterSubcategory": "Dresses"
+    },
+    {
+      "id": "col-3",
+      "title": "Gym & Street Highs",
+      "subtitle": "Performance activewear & kicks",
+      "tag": "ATHLEISURE",
+      "image": "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&auto=format&fit=crop&q=80",
+      "filterCategory": "Sports",
+      "filterSubcategory": "Gym Wear"
+    },
+    {
+      "id": "col-4",
+      "title": "Boho Home Accents",
+      "subtitle": "Hand-woven cushions & cozy throws",
+      "tag": "HOME REFRESH",
+      "image": "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=600&auto=format&fit=crop&q=80",
+      "filterCategory": "Home",
+      "filterSubcategory": "Cushions"
+    }
+  ],
+  "topBrands": [
+    {
+      "id": "b-roadster",
+      "name": "Roadster",
+      "offer": "40-70% OFF",
+      "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=300&auto=format&fit=crop&q=80",
+      "category": "Men"
+    },
+    {
+      "id": "b-puma",
+      "name": "Puma",
+      "offer": "Min. 50% OFF",
+      "image": "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300&auto=format&fit=crop&q=80",
+      "category": "Sports"
+    },
+    {
+      "id": "b-levis",
+      "name": "Levi's",
+      "offer": "Flat 40% OFF",
+      "image": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=300&auto=format&fit=crop&q=80",
+      "category": "Men"
+    },
+    {
+      "id": "b-mango",
+      "name": "Mango",
+      "offer": "Up to 60% OFF",
+      "image": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=300&auto=format&fit=crop&q=80",
+      "category": "Women"
+    },
+    {
+      "id": "b-minimalist",
+      "name": "Minimalist",
+      "offer": "Starting ₹399",
+      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=300&auto=format&fit=crop&q=80",
+      "category": "Beauty"
+    },
+    {
+      "id": "b-gap",
+      "name": "Gap Kids",
+      "offer": "Flat 50% OFF",
+      "image": "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=300&auto=format&fit=crop&q=80",
+      "category": "Kids"
+    }
+  ],
+  "coupons": [
+    {
+      "code": "MYNTRA500",
+      "title": "FLAT ₹500 OFF",
+      "description": "Get Flat ₹500 off on minimum purchase of ₹1,999 across all fashion collections.",
+      "discountType": "flat",
+      "discountValue": 500,
+      "minOrder": 1999,
+      "expiryDate": "Limited Time Deal"
+    },
+    {
+      "code": "FIRSTBUY",
+      "title": "WELCOME ₹200 OFF",
+      "description": "Special introductory savings for your account on minimum order of ₹999.",
+      "discountType": "flat",
+      "discountValue": 200,
+      "minOrder": 999,
+      "expiryDate": "Valid on first 3 orders"
+    },
+    {
+      "code": "INSIDER20",
+      "title": "20% INSIDER REWARD",
+      "description": "Save 20% up to ₹600 on premium footwear, accessories & western wear above ₹1,499.",
+      "discountType": "percentage",
+      "discountValue": 20,
+      "minOrder": 1499,
+      "expiryDate": "VIP Members Only"
+    },
+    {
+      "code": "FREEDEL",
+      "title": "FREE EXPRESS DELIVERY",
+      "description": "Enjoy zero delivery fees on any cart amount without any minimum order requirement.",
+      "discountType": "flat",
+      "discountValue": 49,
+      "minOrder": 0,
+      "expiryDate": "Valid Today"
+    }
+  ],
+  "bankOffers": [
+    {
+      "id": "bo-1",
+      "bank": "HDFC & ICICI Bank",
+      "code": "MYNTRA10",
+      "title": "10% Instant Discount",
+      "description": "Up to ₹1,000 off on Credit/Debit Cards on fashion and lifestyle.",
+      "minSpend": "Min. spend ₹2,499",
+      "validTill": "Valid till 31st Oct",
+      "icon": "card-outline",
+      "color": "#004c8f"
+    },
+    {
+      "id": "bo-2",
+      "bank": "Axis Bank",
+      "code": "AXIS15",
+      "title": "Flat 15% Instant Cashback",
+      "description": "Applicable on Axis Bank Select & Neo Credit Cards.",
+      "minSpend": "Min. spend ₹3,000",
+      "validTill": "Valid till 28th Oct",
+      "icon": "wallet-outline",
+      "color": "#97144d"
+    },
+    {
+      "id": "bo-3",
+      "bank": "UPI First Order",
+      "code": "MYNTRAUPI",
+      "title": "Flat ₹300 OFF on UPI",
+      "description": "Instant discount on payment via Google Pay, PhonePe, or Paytm UPI.",
+      "minSpend": "Min. spend ₹1,499",
+      "validTill": "Valid on first UPI order",
+      "icon": "flash-outline",
+      "color": "#008b44"
+    },
+    {
+      "id": "bo-4",
+      "bank": "Kotak Mahindra Bank",
+      "code": "KOTAKFASHION",
+      "title": "Flat ₹500 OFF",
+      "description": "On Kotak 811 & League Credit Cards across top brands.",
+      "minSpend": "Min. spend ₹2,999",
+      "validTill": "Valid every weekend",
+      "icon": "gift-outline",
+      "color": "#ed1c24"
+    }
+  ],
+  "insiderData": {
+    "defaultPoints": 250,
+    "tier": "GOLD TIER",
+    "tierSubtitle": "Select Tier Member",
+    "pointsRule": "Earn 10 SuperCoins for every ₹100 spent on all purchases.",
+    "perks": [
+      {
+        "id": "perk-1",
+        "icon": "airplane-outline",
+        "title": "Free Express Delivery",
+        "description": "No minimum order required",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "perk-2",
+        "icon": "alarm-outline",
+        "title": "Early Sale Access",
+        "description": "Enter mega sales 24 hrs early",
+        "status": "ACTIVE"
+      },
+      {
+        "id": "perk-3",
+        "icon": "gift-outline",
+        "title": "₹500 Birthday Voucher",
+        "description": "Gift voucher credited every year",
+        "status": "CLAIMABLE"
+      }
+    ]
+  },
+  "subcategories": {
+    "Men": [
+      "T-Shirts",
+      "Casual Shirts",
+      "Formal Shirts",
+      "Jeans",
+      "Trousers",
+      "Jackets",
+      "Sneakers",
+      "Watches"
+    ],
+    "Women": [
+      "Kurtas & Suits",
+      "Sarees",
+      "Dresses",
+      "Tops & Tees",
+      "Jeans",
+      "Handbags",
+      "Heels",
+      "Jewellery"
+    ],
+    "Kids": [
+      "Boys Clothing",
+      "Girls Clothing",
+      "Infants",
+      "Footwear",
+      "Toys",
+      "School Bags"
+    ],
+    "Beauty": [
+      "Skincare",
+      "Makeup",
+      "Haircare",
+      "Fragrances",
+      "Men's Grooming",
+      "Bath & Body"
+    ],
+    "Home": [
+      "Bedsheets",
+      "Curtains",
+      "Cushions",
+      "Cookware",
+      "Wall Decor",
+      "Lamps & Lighting"
+    ],
+    "Sports": [
+      "Running Shoes",
+      "Gym Wear",
+      "Track Pants",
+      "Sports Bras",
+      "Yoga Mats",
+      "Smart Bands"
+    ]
+  },
+  "categoryBanners": {
+    "Men": {
+      "title": "Trendy Casuals & Streetwear Starting ₹399",
+      "tag": "TRENDING NOW"
+    },
+    "Women": {
+      "title": "Festive Ethnic & Western Wear Up to 70% Off",
+      "tag": "BIGGEST DEALS"
+    },
+    "Kids": {
+      "title": "Playful Outfits & Cute Sets Under ₹799",
+      "tag": "KIDS SPECIAL"
+    },
+    "Beauty": {
+      "title": "Skincare Essentials & Fragrances Min 30% Off",
+      "tag": "GLOW UP DEALS"
+    },
+    "Home": {
+      "title": "Designer Bedsheets & Cushions Up to 70% Off",
+      "tag": "HOME MAKEOVER"
+    },
+    "Sports": {
+      "title": "Performance Running Shoes & Activewear",
+      "tag": "ACTIVE ATHLEISURE"
+    }
+  },
+  "popularCategories": [
+    {
+      "id": "pop-1",
+      "name": "T-Shirts",
+      "icon": "shirt-outline"
+    },
+    {
+      "id": "pop-2",
+      "name": "Kurtas",
+      "icon": "sparkles-outline"
+    },
+    {
+      "id": "pop-3",
+      "name": "Dresses",
+      "icon": "woman-outline"
+    },
+    {
+      "id": "pop-4",
+      "name": "Jeans",
+      "icon": "cut-outline"
+    },
+    {
+      "id": "pop-5",
+      "name": "Shoes",
+      "icon": "footsteps-outline"
+    },
+    {
+      "id": "pop-6",
+      "name": "Watches",
+      "icon": "watch-outline"
+    },
+    {
+      "id": "pop-7",
+      "name": "Handbags",
+      "icon": "bag-handle-outline"
+    },
+    {
+      "id": "pop-8",
+      "name": "Beauty",
+      "icon": "color-palette-outline"
+    }
+  ],
+  "trendingSearches": [
+    "Oversized T-Shirts",
+    "Cotton Kurtis Under 799",
+    "Sneakers For Men",
+    "Floral Maxi Dress",
+    "Smartwatches On Sale",
+    "Denim Jackets"
+  ],
+  "wishlists": {
+    "usr-demo-1": [
+      "prod-1",
+      "prod-3"
+    ]
+  },
+  "bags": {
+    "usr-demo-1": [
+      {
+        "id": "item-demo-1",
+        "productId": "prod-1",
+        "size": "M",
+        "color": "Olive Green",
+        "quantity": 1
+      }
+    ]
+  }
+}

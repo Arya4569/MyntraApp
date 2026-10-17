@@ -1,0 +1,15 @@
+{
+  "name": "myntra-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root workspace forwarder for MyntraApp",
+  "scripts": {
+    "start": "npm --prefix MyntraApp start",
+    "web": "npm --prefix MyntraApp run web",
+    "android": "npm --prefix MyntraApp run android",
+    "ios": "npm --prefix MyntraApp run ios",
+    "lint": "npm --prefix MyntraApp run lint",
+    "server": "npm --prefix server start",
+    "server:test": "npm --prefix server test"
+  }
+}

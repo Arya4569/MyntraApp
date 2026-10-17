@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+.env*.local
+
+# Expo & Metro
+.expo/
+dist/
+web-build/
+
+# Server data
+server/data/db.json.tmp
+server/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor & OS files
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
