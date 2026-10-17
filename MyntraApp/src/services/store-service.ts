@@ -1381,6 +1381,75 @@ class StoreService {
       console.warn('Failed to clear searches:', e);
     }
   }
+
+  /* ========================================================
+   * 5. REAL-TIME RAZORPAY PAYMENT METHODS
+   * ======================================================== */
+
+  async getRazorpayKey(): Promise<string> {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/payment/key`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.keyId || 'rzp_test_placeholder';
+      }
+    } catch {}
+    return 'rzp_test_placeholder';
+  }
+
+  async createRazorpayOrder(amount: number, receipt?: string): Promise<{
+    success: boolean;
+    orderId: string;
+    amount: number;
+    currency: string;
+    keyId: string;
+    isLive?: boolean;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/payment/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, receipt }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return data;
+      }
+      return { success: false, orderId: '', amount: 0, currency: 'INR', keyId: '', error: data.error };
+    } catch (err: any) {
+      return {
+        success: false,
+        orderId: '',
+        amount: 0,
+        currency: 'INR',
+        keyId: '',
+        error: err?.message || 'Payment network error',
+      };
+    }
+  }
+
+  async verifyRazorpayPayment(
+    orderId: string,
+    paymentId: string,
+    signature: string
+  ): Promise<{ success: boolean; verified: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/payment/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: orderId,
+          razorpay_payment_id: paymentId,
+          razorpay_signature: signature,
+        }),
+      });
+      const data = await res.json();
+      return { success: res.ok && data.success, verified: Boolean(data.verified), error: data.error };
+    } catch (err: any) {
+      return { success: false, verified: false, error: err?.message };
+    }
+  }
 }
 
 export const storeService = new StoreService();

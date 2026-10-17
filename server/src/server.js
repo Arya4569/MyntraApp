@@ -16,6 +16,7 @@ const offerRoutes = require('./routes/offerRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const insiderRoutes = require('./routes/insiderRoutes');
 const searchRoutes = require('./routes/searchRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -70,6 +71,7 @@ app.use('/api/offers', offerRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/insider', insiderRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // 404 Handler
 app.use((req, res) => {

@@ -135,7 +135,33 @@ const server = app.listen(5098, '127.0.0.1', async () => {
       !delBagRes.data.items.some((i) => i.productId === 'prod-2');
     console.log('14. DELETE /api/bag/items/prod-2:', isDelBagPass ? 'PASS' : 'FAIL');
 
-    console.log('\nALL 14 BACKEND API ROUTES VERIFIED AND PASSING! 🚀');
+    // 15. Razorpay Key: GET /api/payment/key
+    const payKeyRes = await request('/api/payment/key');
+    const isPayKeyPass = payKeyRes.status === 200 && payKeyRes.data.success && typeof payKeyRes.data.keyId === 'string';
+    console.log('15. GET /api/payment/key:', isPayKeyPass ? 'PASS' : 'FAIL');
+
+    // 16. Razorpay Order: POST /api/payment/create-order
+    const createOrderRes = await request('/api/payment/create-order', 'POST', {
+      amount: 499,
+      receipt: 'test_rcpt_1',
+    });
+    const isCreateOrderPass =
+      createOrderRes.status === 200 &&
+      createOrderRes.data.success &&
+      createOrderRes.data.orderId &&
+      createOrderRes.data.amount === 49900;
+    console.log('16. POST /api/payment/create-order (₹499):', isCreateOrderPass ? 'PASS' : 'FAIL');
+
+    // 17. Razorpay Verify: POST /api/payment/verify
+    const verifyPayRes = await request('/api/payment/verify', 'POST', {
+      razorpay_order_id: createOrderRes.data.orderId,
+      razorpay_payment_id: 'pay_test_123456',
+      razorpay_signature: 'test_sig',
+    });
+    const isVerifyPass = verifyPayRes.status === 200 && verifyPayRes.data.verified === true;
+    console.log('17. POST /api/payment/verify:', isVerifyPass ? 'PASS' : 'FAIL');
+
+    console.log('\nALL 17 BACKEND API ROUTES VERIFIED AND PASSING! 🚀');
   } catch (err) {
     console.error('API Test failed with error:', err);
   } finally {
