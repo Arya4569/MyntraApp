@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
 import { authService } from './auth-service';
@@ -20,13 +22,23 @@ import {
   TOP_BRANDS,
 } from '@/data/mock-data';
 import {
+  AppNotification,
+  BagTotals,
   BankOffer,
   CartItem,
+  CartValidationIssue,
+  CartValidationResult,
   Coupon,
   DeliveryAddress,
   FilterState,
   InsiderInfo,
+  NotificationPreferences,
   Order,
+  OrderFilterOptions,
+  OrderHistoryResult,
+  RecommendationProduct,
+  RecommendationResult,
+  ReorderSummary,
 } from '@/types/store';
 
 const STORE_KEYS = {
@@ -38,41 +50,40 @@ const STORE_KEYS = {
   CART_GUEST: '@myntra_cart_guest',
   CART_LEGACY: '@myntra_cart',
   CART_USER_PREFIX: '@myntra_cart_user_',
+  SAVED_FOR_LATER: '@myntra_saved_for_later',
+  SAVED_FOR_LATER_GUEST: '@myntra_saved_for_later_guest',
+  SAVED_FOR_LATER_LEGACY: '@myntra_saved_for_later',
+  SAVED_FOR_LATER_USER_PREFIX: '@myntra_saved_for_later_user_',
   ORDERS: '@myntra_orders',
+  ORDERS_USER_PREFIX: '@myntra_orders_user_',
+  ORDERS_GUEST: '@myntra_orders_guest',
   ADDRESSES: '@myntra_addresses',
+  ADDRESSES_USER_PREFIX: '@myntra_addresses_user_',
+  ADDRESSES_GUEST: '@myntra_addresses_guest',
   RECENTLY_VIEWED: '@myntra_recently_viewed',
+  RECENTLY_VIEWED_GUEST: '@myntra_recently_viewed_guest',
+  RECENTLY_VIEWED_LEGACY: '@myntra_recently_viewed',
+  RECENTLY_VIEWED_USER_PREFIX: '@myntra_recently_viewed_user_',
   RECENT_SEARCHES: '@myntra_recent_searches',
+  NOTIFICATION_PREFS_GUEST: '@myntra_notification_prefs_guest',
+  NOTIFICATION_PREFS_USER_PREFIX: '@myntra_notification_prefs_user_',
 };
-
-const DEFAULT_ADDRESSES: DeliveryAddress[] = [
-  {
-    id: 'addr-default',
-    name: 'Aryak Sharma',
-    mobile: '9876543210',
-    pincode: '400001',
-    address: 'Flat 402, Sea Green Apartments, Nariman Point',
-    locality: 'Opposite Express Towers',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    addressType: 'Home',
-    isDefault: true,
-  },
-];
 
 const getApiBaseUrl = (): string => {
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  // If running in Expo Go on physical device or emulator, extract the computer's LAN IP from hostUri
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const host = hostUri.split(':')[0];
-    if (host) {
-      return `http://${host}:5000/api`;
+  if (Platform.OS !== 'web') {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const host = hostUri.split(':')[0];
+      if (host) {
+        return `http://${host}:5000/api`;
+      }
     }
-  }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api';
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:5000/api';
+    }
   }
   return 'http://localhost:5000/api';
 };
@@ -507,21 +518,16 @@ class StoreService {
       }
     }
 
-    // Guest or Offline fallback
+    if (!userId) {
+      return [];
+    }
+
+    // Authenticated Offline fallback
     try {
       const key = this.getWishlistStorageKey(userId);
       const data = await AsyncStorage.getItem(key);
       if (data) {
         return JSON.parse(data);
-      }
-
-      if (!userId) {
-        const legacyData = await AsyncStorage.getItem(STORE_KEYS.WISHLIST_LEGACY);
-        if (legacyData) {
-          const parsed = JSON.parse(legacyData);
-          await AsyncStorage.setItem(STORE_KEYS.WISHLIST_GUEST, JSON.stringify(parsed));
-          return parsed;
-        }
       }
     } catch {}
 
@@ -568,7 +574,11 @@ class StoreService {
       }
     }
 
-    // Guest / local update
+    if (!userId) {
+      return [];
+    }
+
+    // Authenticated offline / fallback local update
     const current = await this.getWishlist(userId);
     const updated = Array.from(new Set([...current, productId]));
     await this.saveWishlist(updated, userId);
@@ -660,6 +670,8 @@ class StoreService {
     try {
       const key = this.getWishlistStorageKey(userId);
       await AsyncStorage.setItem(key, JSON.stringify([]));
+      await AsyncStorage.removeItem(STORE_KEYS.WISHLIST_GUEST);
+      await AsyncStorage.removeItem(STORE_KEYS.WISHLIST_LEGACY);
     } catch (e) {
       console.warn('Failed to clear wishlist:', e);
     }
@@ -699,11 +711,15 @@ class StoreService {
   }
 
   /* ========================================================
-   * 3. SHOPPING BAG API METHODS
+   * 3. SHOPPING BAG & SAVE FOR LATER API METHODS
    * ======================================================== */
 
   private getCartStorageKey(userId?: string): string {
     return userId ? `${STORE_KEYS.CART_USER_PREFIX}${userId}` : STORE_KEYS.CART_GUEST;
+  }
+
+  private getSavedForLaterStorageKey(userId?: string): string {
+    return userId ? `${STORE_KEYS.SAVED_FOR_LATER_USER_PREFIX}${userId}` : STORE_KEYS.SAVED_FOR_LATER_GUEST;
   }
 
   /**
@@ -733,25 +749,98 @@ class StoreService {
       }
     }
 
-    // Guest / local fallback
+    if (!userId) {
+      return [];
+    }
+
+    // Authenticated local fallback
     try {
       const key = this.getCartStorageKey(userId);
       const data = await AsyncStorage.getItem(key);
       if (data) {
         return JSON.parse(data);
       }
-
-      if (!userId) {
-        const legacyData = await AsyncStorage.getItem(STORE_KEYS.CART_LEGACY);
-        if (legacyData) {
-          const parsed = JSON.parse(legacyData);
-          await AsyncStorage.setItem(STORE_KEYS.CART_GUEST, JSON.stringify(parsed));
-          return parsed;
-        }
-      }
     } catch {}
 
     return [];
+  }
+
+  /**
+   * Fetch active bag items along with trusted server totals, discounts, and delivery fee
+   */
+  async fetchBagWithTotals(userId?: string): Promise<{ items: CartItem[]; totals: BagTotals }> {
+    const defaultTotals: BagTotals = {
+      count: 0,
+      lineItemsCount: 0,
+      totalMRP: 0,
+      subtotal: 0,
+      discountAmount: 0,
+      deliveryFee: 0,
+      finalTotal: 0,
+      hasOutOfStockItems: false,
+      hasPriceChanges: false,
+      stockWarnings: [],
+      savedForLaterCount: 0,
+    };
+
+    const token = await authService.getToken();
+
+    if (token && userId) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${getApiBaseUrl()}/bag`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success && Array.isArray(json.items)) {
+            await this.saveCart(json.items, userId);
+            return {
+              items: json.items,
+              totals: {
+                count: json.count || 0,
+                lineItemsCount: json.lineItemsCount || json.items.length,
+                totalMRP: json.totalMRP || 0,
+                subtotal: json.subtotal || 0,
+                discountAmount: json.discountAmount || 0,
+                deliveryFee: json.deliveryFee || 0,
+                finalTotal: json.finalTotal || 0,
+                hasOutOfStockItems: Boolean(json.hasOutOfStockItems),
+                hasPriceChanges: Boolean(json.hasPriceChanges),
+                stockWarnings: json.stockWarnings || [],
+                savedForLaterCount: json.savedForLaterCount || 0,
+              },
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch bag with totals from API:', e);
+      }
+    }
+
+    const localCart = await this.getCart(userId);
+    const totalMRP = localCart.reduce((sum, i) => sum + (i.product.originalPrice || i.product.price) * i.quantity, 0);
+    const subtotal = localCart.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+    const discountAmount = Math.max(0, totalMRP - subtotal);
+    const deliveryFee = subtotal === 0 || subtotal >= 999 ? 0 : 99;
+    const finalTotal = subtotal === 0 ? 0 : subtotal + deliveryFee;
+    const count = localCart.reduce((sum, i) => sum + i.quantity, 0);
+
+    return {
+      items: localCart,
+      totals: {
+        ...defaultTotals,
+        count,
+        lineItemsCount: localCart.length,
+        totalMRP,
+        subtotal,
+        discountAmount,
+        deliveryFee,
+        finalTotal,
+      },
+    };
   }
 
   async saveCart(items: CartItem[], userId?: string): Promise<void> {
@@ -760,6 +849,57 @@ class StoreService {
       await AsyncStorage.setItem(key, JSON.stringify(items));
     } catch (e) {
       console.warn('Failed to save cart:', e);
+    }
+  }
+
+  /**
+   * Load Saved for Later items
+   */
+  async getSavedForLater(userId?: string): Promise<CartItem[]> {
+    const token = await authService.getToken();
+
+    if (token && userId) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${getApiBaseUrl()}/bag/saved-for-later`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success && Array.isArray(json.items)) {
+            await this.saveSavedForLater(json.items, userId);
+            return json.items;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch saved for later from API, using local cache:', e);
+      }
+    }
+
+    if (!userId) {
+      return [];
+    }
+
+    // Authenticated local fallback
+    try {
+      const key = this.getSavedForLaterStorageKey(userId);
+      const data = await AsyncStorage.getItem(key);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch {}
+
+    return [];
+  }
+
+  async saveSavedForLater(items: CartItem[], userId?: string): Promise<void> {
+    try {
+      const key = this.getSavedForLaterStorageKey(userId);
+      await AsyncStorage.setItem(key, JSON.stringify(items));
+    } catch (e) {
+      console.warn('Failed to save saved-for-later:', e);
     }
   }
 
@@ -784,25 +924,38 @@ class StoreService {
           body: JSON.stringify({
             productId: product.id,
             size,
-            color: color || product.colors[0],
+            color: color || (product.colors && product.colors[0]) || 'Standard',
             quantity,
           }),
         });
 
-        if (response.ok) {
-          const json = await response.json();
-          if (json.success && Array.isArray(json.items)) {
-            await this.saveCart(json.items, userId);
-            return json.items;
-          }
+        const json = await response.json();
+        if (response.ok && json.success && Array.isArray(json.items)) {
+          await this.saveCart(json.items, userId);
+          return json.items;
+        } else if (json.error) {
+          throw new Error(json.error);
         }
-      } catch (e) {
+      } catch (e: any) {
+        if (e.message && !e.message.includes('fetch')) {
+          throw e;
+        }
         console.warn('Bag add API error, saving locally:', e);
       }
     }
 
-    // Guest / local update
+    if (!userId) {
+      return [];
+    }
+
+    // Authenticated offline / fallback local update with stock validation
     const cart = await this.getCart(userId);
+    const availableStock = product.inStock !== false ? Number(product.stockCount ?? 10) : 0;
+
+    if (product.inStock === false || availableStock <= 0) {
+      throw new Error(`"${product.name}" is currently out of stock.`);
+    }
+
     const existingIndex = cart.findIndex(
       (item) =>
         item.productId === product.id &&
@@ -811,15 +964,26 @@ class StoreService {
     );
 
     if (existingIndex > -1) {
-      cart[existingIndex].quantity += quantity;
+      const currentQty = cart[existingIndex].quantity;
+      if (currentQty + quantity > availableStock) {
+        throw new Error(
+          `Cannot add more. You have ${currentQty} in bag and only ${availableStock} are available in stock.`
+        );
+      }
+      cart[existingIndex].quantity = Math.min(10, currentQty + quantity);
     } else {
+      if (quantity > availableStock) {
+        throw new Error(`Only ${availableStock} unit(s) available in stock.`);
+      }
       cart.push({
         id: `cart-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         productId: product.id,
         product,
         size,
-        color: color || product.colors[0],
-        quantity,
+        color: color || (product.colors && product.colors[0]) || 'Standard',
+        quantity: Math.min(10, quantity),
+        savedPrice: product.price,
+        addedAt: new Date().toISOString(),
       });
     }
 
@@ -849,14 +1013,17 @@ class StoreService {
           }
         );
 
-        if (response.ok) {
-          const json = await response.json();
-          if (json.success && Array.isArray(json.items)) {
-            await this.saveCart(json.items, userId);
-            return json.items;
-          }
+        const json = await response.json();
+        if (response.ok && json.success && Array.isArray(json.items)) {
+          await this.saveCart(json.items, userId);
+          return json.items;
+        } else if (json.error) {
+          throw new Error(json.error);
         }
-      } catch (e) {
+      } catch (e: any) {
+        if (e.message && !e.message.includes('fetch')) {
+          throw e;
+        }
         console.warn('Bag update API error, updating locally:', e);
       }
     }
@@ -868,11 +1035,16 @@ class StoreService {
         (item) => item.id !== cartItemIdOrProdId && item.productId !== cartItemIdOrProdId
       );
     } else {
-      cart = cart.map((item) =>
-        item.id === cartItemIdOrProdId || item.productId === cartItemIdOrProdId
-          ? { ...item, quantity: newQty }
-          : item
-      );
+      cart = cart.map((item) => {
+        if (item.id === cartItemIdOrProdId || item.productId === cartItemIdOrProdId) {
+          const availableStock = item.product.inStock !== false ? Number(item.product.stockCount ?? 10) : 0;
+          if (newQty > availableStock) {
+            throw new Error(`Requested quantity (${newQty}) exceeds available stock (${availableStock}).`);
+          }
+          return { ...item, quantity: Math.min(10, newQty) };
+        }
+        return item;
+      });
     }
     await this.saveCart(cart, userId);
     return cart;
@@ -884,6 +1056,27 @@ class StoreService {
     newColor?: string,
     userId?: string
   ): Promise<CartItem[]> {
+    const token = await authService.getToken();
+
+    if (token && userId) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${getApiBaseUrl()}/bag/items/${cartItemId}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ size: newSize, color: newColor }),
+        });
+
+        const json = await response.json();
+        if (response.ok && json.success && Array.isArray(json.items)) {
+          await this.saveCart(json.items, userId);
+          return json.items;
+        }
+      } catch (e) {
+        console.warn('Bag update variant error, updating locally:', e);
+      }
+    }
+
     let cart = await this.getCart(userId);
     const targetItem = cart.find((i) => i.id === cartItemId);
     if (!targetItem) return cart;
@@ -953,7 +1146,7 @@ class StoreService {
   }
 
   /**
-   * Clear all items in cart via DELETE /api/bag (or guest storage)
+   * Clear all items in active cart via DELETE /api/bag (or guest storage)
    */
   async clearCart(userId?: string): Promise<void> {
     const token = await authService.getToken();
@@ -971,48 +1164,338 @@ class StoreService {
     }
 
     await this.saveCart([], userId);
+    await AsyncStorage.removeItem(STORE_KEYS.CART_GUEST);
+    await AsyncStorage.removeItem(STORE_KEYS.CART_LEGACY);
   }
 
   /**
-   * Merge guest cart into user account upon login, combining line items with matching variants
+   * Move item from active cart to Save for Later
    */
-  async mergeGuestCart(userId: string): Promise<CartItem[]> {
+  async saveForLater(
+    cartItemIdOrProdId: string,
+    userId?: string
+  ): Promise<{ cart: CartItem[]; savedForLater: CartItem[] }> {
+    const token = await authService.getToken();
+
+    if (token && userId) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(
+          `${getApiBaseUrl()}/bag/items/${cartItemIdOrProdId}/save-for-later`,
+          {
+            method: 'POST',
+            headers,
+          }
+        );
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success && json.bag && json.savedForLater) {
+            await this.saveCart(json.bag.items, userId);
+            await this.saveSavedForLater(json.savedForLater.items, userId);
+            return {
+              cart: json.bag.items,
+              savedForLater: json.savedForLater.items,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Save for later API error, moving locally:', e);
+      }
+    }
+
+    // Guest / local implementation
+    const cart = await this.getCart(userId);
+    const saved = await this.getSavedForLater(userId);
+
+    const index = cart.findIndex(
+      (item) => item.id === cartItemIdOrProdId || item.productId === cartItemIdOrProdId
+    );
+
+    if (index > -1) {
+      const [itemToSave] = cart.splice(index, 1);
+      const duplicateSavedIndex = saved.findIndex(
+        (s) => s.productId === itemToSave.productId && s.size === itemToSave.size
+      );
+
+      if (duplicateSavedIndex > -1) {
+        saved[duplicateSavedIndex].quantity = Math.min(
+          10,
+          saved[duplicateSavedIndex].quantity + itemToSave.quantity
+        );
+      } else {
+        saved.unshift({
+          ...itemToSave,
+          id: `saved-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          savedPrice: itemToSave.product.price,
+          savedAt: new Date().toISOString(),
+        });
+      }
+
+      await this.saveCart(cart, userId);
+      await this.saveSavedForLater(saved, userId);
+    }
+
+    return { cart, savedForLater: saved };
+  }
+
+  /**
+   * Move item from Save for Later back to active bag with stock/price revalidation
+   */
+  async moveToCartFromSaved(
+    savedItemIdOrProdId: string,
+    userId?: string
+  ): Promise<{ cart: CartItem[]; savedForLater: CartItem[]; error?: string }> {
+    const token = await authService.getToken();
+
+    if (token && userId) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(
+          `${getApiBaseUrl()}/bag/saved-for-later/${savedItemIdOrProdId}/move-to-bag`,
+          {
+            method: 'POST',
+            headers,
+          }
+        );
+
+        const json = await response.json();
+        if (response.ok && json.success && json.bag && json.savedForLater) {
+          await this.saveCart(json.bag.items, userId);
+          await this.saveSavedForLater(json.savedForLater.items, userId);
+          return {
+            cart: json.bag.items,
+            savedForLater: json.savedForLater.items,
+          };
+        } else if (json.error) {
+          throw new Error(json.error);
+        }
+      } catch (e: any) {
+        if (e.message && !e.message.includes('fetch')) {
+          throw e;
+        }
+        console.warn('Move to bag API error, moving locally:', e);
+      }
+    }
+
+    // Guest / local implementation
+    const cart = await this.getCart(userId);
+    const saved = await this.getSavedForLater(userId);
+
+    const index = saved.findIndex(
+      (item) => item.id === savedItemIdOrProdId || item.productId === savedItemIdOrProdId
+    );
+
+    if (index === -1) {
+      throw new Error('Item not found in Save for Later.');
+    }
+
+    const savedItem = saved[index];
+    const availableStock = savedItem.product.inStock !== false ? Number(savedItem.product.stockCount ?? 10) : 0;
+
+    if (savedItem.product.inStock === false || availableStock <= 0) {
+      throw new Error(`"${savedItem.product.name}" is currently out of stock.`);
+    }
+
+    const existingBagIndex = cart.findIndex(
+      (b) => b.productId === savedItem.productId && b.size === savedItem.size
+    );
+
+    if (existingBagIndex > -1) {
+      const currentQty = cart[existingBagIndex].quantity;
+      if (currentQty >= availableStock) {
+        throw new Error(
+          `Cannot move to bag. You already have the maximum available stock (${availableStock}) in your bag.`
+        );
+      }
+      cart[existingBagIndex].quantity = Math.min(availableStock, currentQty + savedItem.quantity);
+    } else {
+      cart.push({
+        ...savedItem,
+        id: `cart-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        quantity: Math.min(availableStock, savedItem.quantity || 1),
+      });
+    }
+
+    saved.splice(index, 1);
+    await this.saveCart(cart, userId);
+    await this.saveSavedForLater(saved, userId);
+
+    return { cart, savedForLater: saved };
+  }
+
+  /**
+   * Remove item from Save for Later
+   */
+  async removeFromSavedForLater(
+    savedItemIdOrProdId: string,
+    userId?: string
+  ): Promise<CartItem[]> {
+    const token = await authService.getToken();
+
+    if (token && userId) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(
+          `${getApiBaseUrl()}/bag/saved-for-later/${savedItemIdOrProdId}`,
+          {
+            method: 'DELETE',
+            headers,
+          }
+        );
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success && json.savedForLater && Array.isArray(json.savedForLater.items)) {
+            await this.saveSavedForLater(json.savedForLater.items, userId);
+            return json.savedForLater.items;
+          }
+        }
+      } catch (e) {
+        console.warn('Remove saved item API error, removing locally:', e);
+      }
+    }
+
+    const saved = await this.getSavedForLater(userId);
+    const filtered = saved.filter(
+      (item) => item.id !== savedItemIdOrProdId && item.productId !== savedItemIdOrProdId
+    );
+    await this.saveSavedForLater(filtered, userId);
+    return filtered;
+  }
+
+  /**
+   * Pre-checkout cart verification: confirms stock and returns any price changes
+   */
+  async validateCart(userId?: string): Promise<CartValidationResult> {
+    const token = await authService.getToken();
+
+    if (token && userId) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${getApiBaseUrl()}/bag/validate`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success) {
+            return {
+              valid: json.valid,
+              hasPriceChanges: Boolean(json.hasPriceChanges),
+              issues: json.issues || [],
+              bag: json.bag,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Cart validation API error:', e);
+      }
+    }
+
+    // Local validation fallback
+    const cart = await this.getCart(userId);
+    const issues: CartValidationIssue[] = [];
+
+    for (const item of cart) {
+      const availableStock = item.product.inStock !== false ? Number(item.product.stockCount ?? 10) : 0;
+      if (item.product.inStock === false || availableStock <= 0) {
+        issues.push({
+          type: 'OUT_OF_STOCK',
+          itemId: item.id,
+          productId: item.productId,
+          productName: item.product.name,
+          message: `"${item.product.name}" is currently out of stock.`,
+        });
+      } else if (item.quantity > availableStock) {
+        issues.push({
+          type: 'STOCK_EXCEEDED',
+          itemId: item.id,
+          productId: item.productId,
+          productName: item.product.name,
+          availableStock,
+          requestedQuantity: item.quantity,
+          message: `Only ${availableStock} unit(s) available for "${item.product.name}".`,
+        });
+      }
+    }
+
+    return {
+      valid: issues.length === 0,
+      hasPriceChanges: false,
+      issues,
+    };
+  }
+
+  /**
+   * Merge guest cart and saved items into user account upon login atomically
+   */
+  async mergeGuestCart(userId: string): Promise<{ cart: CartItem[]; savedForLater: CartItem[] }> {
     try {
-      const guestKey = STORE_KEYS.CART_GUEST;
+      const guestCartKey = STORE_KEYS.CART_GUEST;
+      const guestSavedKey = STORE_KEYS.SAVED_FOR_LATER_GUEST;
+
       let guestCart: CartItem[] = [];
-      const guestData = await AsyncStorage.getItem(guestKey);
-      if (guestData) {
-        guestCart = JSON.parse(guestData);
+      let guestSaved: CartItem[] = [];
+
+      const [guestCartData, guestSavedData] = await Promise.all([
+        AsyncStorage.getItem(guestCartKey),
+        AsyncStorage.getItem(guestSavedKey),
+      ]);
+
+      if (guestCartData) {
+        try { guestCart = JSON.parse(guestCartData); } catch {}
+      }
+      if (guestSavedData) {
+        try { guestSaved = JSON.parse(guestSavedData); } catch {}
       }
 
       const token = await authService.getToken();
 
-      // If user has token and guest items exist, sync to backend
-      if (token && guestCart.length > 0) {
-        const headers = await getAuthHeaders();
-        for (const item of guestCart) {
-          try {
-            await fetch(`${getApiBaseUrl()}/bag/items`, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({
-                productId: item.productId,
-                size: item.size,
-                color: item.color,
-                quantity: item.quantity,
-              }),
-            });
-          } catch {}
+      // If user has token, send atomic merge request to backend
+      if (token && (guestCart.length > 0 || guestSaved.length > 0)) {
+        try {
+          const headers = await getAuthHeaders();
+          const response = await fetch(`${getApiBaseUrl()}/bag/merge`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              cartItems: guestCart,
+              savedForLaterItems: guestSaved,
+            }),
+          });
+
+          if (response.ok) {
+            const json = await response.json();
+            if (json.success && json.bag && json.savedForLater) {
+              await AsyncStorage.removeItem(guestCartKey);
+              await AsyncStorage.removeItem(guestSavedKey);
+              await AsyncStorage.removeItem(STORE_KEYS.CART_LEGACY);
+              await this.saveCart(json.bag.items, userId);
+              await this.saveSavedForLater(json.savedForLater.items, userId);
+              return {
+                cart: json.bag.items,
+                savedForLater: json.savedForLater.items,
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('Backend bag merge error, falling back locally:', e);
         }
-        await AsyncStorage.removeItem(STORE_KEYS.CART_GUEST);
-        await AsyncStorage.removeItem(STORE_KEYS.CART_LEGACY);
-        return await this.getCart(userId);
       }
 
       // Local fallback merge
-      const userKey = this.getCartStorageKey(userId);
-      const userData = await AsyncStorage.getItem(userKey);
-      const userCart: CartItem[] = userData ? JSON.parse(userData) : [];
+      const userCartKey = this.getCartStorageKey(userId);
+      const userSavedKey = this.getSavedForLaterStorageKey(userId);
+
+      const [userCartData, userSavedData] = await Promise.all([
+        AsyncStorage.getItem(userCartKey),
+        AsyncStorage.getItem(userSavedKey),
+      ]);
+
+      const userCart: CartItem[] = userCartData ? JSON.parse(userCartData) : [];
+      const userSaved: CartItem[] = userSavedData ? JSON.parse(userSavedData) : [];
 
       const mergedCart = [...userCart];
       guestCart.forEach((gItem) => {
@@ -1029,14 +1512,38 @@ class StoreService {
         }
       });
 
-      await AsyncStorage.setItem(userKey, JSON.stringify(mergedCart));
-      await AsyncStorage.removeItem(STORE_KEYS.CART_GUEST);
+      const mergedSaved = [...userSaved];
+      guestSaved.forEach((sItem) => {
+        const matchIndex = mergedSaved.findIndex(
+          (uItem) =>
+            uItem.productId === sItem.productId &&
+            uItem.size === sItem.size &&
+            uItem.color === sItem.color
+        );
+        if (matchIndex > -1) {
+          mergedSaved[matchIndex].quantity += sItem.quantity;
+        } else {
+          mergedSaved.push(sItem);
+        }
+      });
+
+      await AsyncStorage.setItem(userCartKey, JSON.stringify(mergedCart));
+      await AsyncStorage.setItem(userSavedKey, JSON.stringify(mergedSaved));
+      await AsyncStorage.removeItem(guestCartKey);
+      await AsyncStorage.removeItem(guestSavedKey);
       await AsyncStorage.removeItem(STORE_KEYS.CART_LEGACY);
 
-      return mergedCart;
+      return {
+        cart: mergedCart,
+        savedForLater: mergedSaved,
+      };
     } catch (e) {
-      console.warn('Failed to merge guest cart:', e);
-      return await this.getCart(userId);
+      console.warn('Failed to merge guest cart and saved items:', e);
+      const [cart, savedForLater] = await Promise.all([
+        this.getCart(userId),
+        this.getSavedForLater(userId),
+      ]);
+      return { cart, savedForLater };
     }
   }
 
@@ -1044,30 +1551,154 @@ class StoreService {
    * 4. ORDERS & ADDRESSES & RECENT
    * ======================================================== */
 
-  async getOrders(userId?: string): Promise<Order[]> {
-    try {
-      const data = await AsyncStorage.getItem(STORE_KEYS.ORDERS);
-      const all: Order[] = data ? JSON.parse(data) : [];
-      if (userId) {
-        return all.filter((o) => !o.userId || o.userId === userId);
+  getOrderStorageKey(userId?: string): string {
+    return userId
+      ? `${STORE_KEYS.ORDERS_USER_PREFIX}${userId}`
+      : STORE_KEYS.ORDERS_GUEST;
+  }
+
+  async getOrders(userId?: string, options?: OrderFilterOptions): Promise<Order[]> {
+    const token = await authService.getToken();
+    const currentSession = await authService.getSession();
+    const effectiveUserId = userId || currentSession?.id;
+
+    if (token && effectiveUserId) {
+      try {
+        const headers = await getAuthHeaders();
+        const params = new URLSearchParams();
+        if (options?.page) params.append('page', String(options.page));
+        if (options?.limit) params.append('limit', String(options.limit));
+        if (options?.status) params.append('status', options.status);
+        if (options?.sortBy) params.append('sortBy', options.sortBy);
+        if (options?.search) params.append('search', options.search);
+        if (options?.dateRange && options.dateRange !== 'all') params.append('dateRange', options.dateRange);
+        if (options?.startDate) params.append('startDate', options.startDate);
+        if (options?.endDate) params.append('endDate', options.endDate);
+
+        const qs = params.toString();
+        const res = await fetch(`${getApiBaseUrl()}/orders${qs ? `?${qs}` : ''}`, {
+          headers,
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.orders)) {
+            // Sync with partitioned local storage cache for this user
+            const key = this.getOrderStorageKey(effectiveUserId);
+            await AsyncStorage.setItem(key, JSON.stringify(json.orders));
+            return json.orders;
+          }
+        }
+      } catch (e) {
+        console.warn('Network fetch for orders failed, falling back to offline cache:', e);
       }
-      return all;
+    }
+
+    // Guest or unauthenticated: NEVER leak another user's orders
+    if (!effectiveUserId) {
+      return [];
+    }
+
+    // Fallback to partitioned local storage for this specific user
+    try {
+      const key = this.getOrderStorageKey(effectiveUserId);
+      const data = await AsyncStorage.getItem(key);
+      const all: Order[] = data ? JSON.parse(data) : [];
+      return all.filter((o) => o.userId === effectiveUserId);
     } catch {
       return [];
     }
   }
 
+  async getOrderHistory(options?: OrderFilterOptions): Promise<OrderHistoryResult> {
+    try {
+      const headers = await getAuthHeaders();
+      const params = new URLSearchParams();
+      if (options?.page) params.append('page', String(options.page));
+      if (options?.limit) params.append('limit', String(options.limit));
+      if (options?.status) params.append('status', options.status);
+      if (options?.sortBy) params.append('sortBy', options.sortBy);
+      if (options?.search) params.append('search', options.search);
+      if (options?.dateRange && options.dateRange !== 'all') params.append('dateRange', options.dateRange);
+      if (options?.startDate) params.append('startDate', options.startDate);
+      if (options?.endDate) params.append('endDate', options.endDate);
+
+      const qs = params.toString();
+      const res = await fetch(`${getApiBaseUrl()}/orders${qs ? `?${qs}` : ''}`, {
+        headers,
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.orders)) {
+          return {
+            orders: json.orders,
+            pagination: json.pagination || {
+              page: options?.page || 1,
+              limit: options?.limit || 10,
+              total: json.orders.length,
+              totalPages: 1,
+              hasMore: false,
+            },
+            filters: json.filters,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Network fetch for order history failed, falling back to cache:', e);
+    }
+
+    // Fallback offline pagination
+    const all = await this.getOrders();
+    const page = options?.page || 1;
+    const limit = options?.limit || 10;
+    const startIndex = (page - 1) * limit;
+    const paginated = all.slice(startIndex, startIndex + limit);
+    return {
+      orders: paginated,
+      pagination: {
+        page,
+        limit,
+        total: all.length,
+        totalPages: Math.ceil(all.length / limit) || 1,
+        hasMore: startIndex + limit < all.length,
+      },
+    };
+  }
+
+  async getOrderById(orderId: string): Promise<Order | null> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/orders/${orderId}`, {
+        headers,
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.order) {
+          return json.order;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch order by ID from API:', e);
+    }
+
+    // Fallback to local storage
+    const all = await this.getOrders();
+    return all.find((o) => o.id === orderId) || null;
+  }
+
   async placeOrder(
     items: CartItem[],
-    shippingAddress: string = 'Home, Mumbai, Maharashtra - 400001',
+    shippingAddress: string = 'Flat 402, Sea Green Apartments, Nariman Point, Mumbai - 400001',
     appliedCouponCode?: string,
     couponDiscount: number = 0,
     paymentMethod: string = 'Cash on Delivery / UPI',
     userId?: string
   ): Promise<Order> {
+    const orderKey = this.getOrderStorageKey(userId);
     let allOrders: Order[] = [];
     try {
-      const data = await AsyncStorage.getItem(STORE_KEYS.ORDERS);
+      const data = await AsyncStorage.getItem(orderKey);
       if (data) {
         allOrders = JSON.parse(data);
       }
@@ -1105,6 +1736,7 @@ class StoreService {
 
     const newOrder: Order = {
       id: `MYN-${Math.floor(100000 + Math.random() * 900000)}`,
+      invoiceNumber: `INV-MYN-${Math.floor(100000 + Math.random() * 900000)}`,
       userId: userId || undefined,
       date: new Date().toISOString(),
       items: [...items],
@@ -1148,16 +1780,79 @@ class StoreService {
     };
 
     allOrders.unshift(newOrder);
-    await AsyncStorage.setItem(STORE_KEYS.ORDERS, JSON.stringify(allOrders));
+    await AsyncStorage.setItem(orderKey, JSON.stringify(allOrders));
 
     await this.clearCart(userId);
+
+    // Sync order to backend to record order & trigger real order confirmation notification
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/orders`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          id: newOrder.id,
+          items: newOrder.items,
+          shippingAddress: newOrder.shippingAddress,
+          appliedCoupon: newOrder.appliedCoupon,
+          couponDiscount: newOrder.couponDiscount,
+          paymentMethod: newOrder.paymentMethod,
+          paymentStatus: newOrder.paymentStatus,
+          totalAmount: newOrder.totalAmount,
+          totalMRP: newOrder.totalMRP,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.order) {
+          return json.order;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend order placement API sync notice:', e);
+    }
 
     return newOrder;
   }
 
-  async cancelOrder(orderId: string, reason?: string): Promise<boolean> {
+  async cancelOrder(
+    orderId: string,
+    reason?: string,
+    userId?: string
+  ): Promise<{ success: boolean; order?: Order; error?: string }> {
+    const currentSession = await authService.getSession();
+    const effectiveUserId = userId || currentSession?.id;
+    const orderKey = this.getOrderStorageKey(effectiveUserId);
+
     try {
-      const data = await AsyncStorage.getItem(STORE_KEYS.ORDERS);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reason: reason || 'Cancelled by user' }),
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.success) {
+        // Sync to local AsyncStorage
+        const data = await AsyncStorage.getItem(orderKey);
+        const all: Order[] = data ? JSON.parse(data) : [];
+        const updated = all.map((o) => (o.id === orderId ? json.order : o));
+        await AsyncStorage.setItem(orderKey, JSON.stringify(updated));
+        return { success: true, order: json.order };
+      }
+
+      if (json?.error) {
+        return { success: false, error: json.error };
+      }
+    } catch (e) {
+      console.warn('Server cancel order API call failed:', e);
+    }
+
+    // Local fallback if offline
+    try {
+      const data = await AsyncStorage.getItem(orderKey);
       const all: Order[] = data ? JSON.parse(data) : [];
       let found = false;
 
@@ -1173,7 +1868,7 @@ class StoreService {
           return {
             ...o,
             status: 'Cancelled' as const,
-            paymentStatus: o.paymentStatus === 'Paid' ? ('Refunded' as const) : o.paymentStatus,
+            paymentStatus: o.paymentStatus === 'Paid' ? ('Refund Pending' as const) : o.paymentStatus,
             trackingSteps: [
               ...o.trackingSteps.map((s) => ({ ...s, active: false })),
               {
@@ -1189,23 +1884,56 @@ class StoreService {
       });
 
       if (found) {
-        await AsyncStorage.setItem(STORE_KEYS.ORDERS, JSON.stringify(updated));
-        return true;
+        await AsyncStorage.setItem(orderKey, JSON.stringify(updated));
+        const updatedOrder = updated.find((o) => o.id === orderId);
+        return { success: true, order: updatedOrder };
       }
-      return false;
-    } catch (e) {
-      console.warn('Failed to cancel order:', e);
-      return false;
+      return { success: false, error: 'Order is not eligible for cancellation.' };
+    } catch {
+      return { success: false, error: 'Cancellation failed due to local storage error.' };
     }
   }
 
   async returnOrder(
     orderId: string,
     actionType: 'return' | 'exchange' = 'return',
-    reason: string = 'Size/fit issue'
-  ): Promise<boolean> {
+    reason: string = 'Size/fit issue',
+    exchangeSize?: string,
+    userId?: string
+  ): Promise<{ success: boolean; order?: Order; error?: string }> {
+    const currentSession = await authService.getSession();
+    const effectiveUserId = userId || currentSession?.id;
+    const orderKey = this.getOrderStorageKey(effectiveUserId);
+
     try {
-      const data = await AsyncStorage.getItem(STORE_KEYS.ORDERS);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/orders/${orderId}/return`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ actionType, reason, exchangeSize }),
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.success) {
+        // Sync to local AsyncStorage
+        const data = await AsyncStorage.getItem(orderKey);
+        const all: Order[] = data ? JSON.parse(data) : [];
+        const updated = all.map((o) => (o.id === orderId ? json.order : o));
+        await AsyncStorage.setItem(orderKey, JSON.stringify(updated));
+        return { success: true, order: json.order };
+      }
+
+      if (json?.error) {
+        return { success: false, error: json.error };
+      }
+    } catch (e) {
+      console.warn('Server return order API call failed:', e);
+    }
+
+    // Local fallback if offline
+    try {
+      const data = await AsyncStorage.getItem(orderKey);
       const all: Order[] = data ? JSON.parse(data) : [];
       let found = false;
 
@@ -1219,7 +1947,7 @@ class StoreService {
           return {
             ...o,
             status: 'Returned' as const,
-            paymentStatus: actionType === 'return' ? ('Refunded' as const) : o.paymentStatus,
+            paymentStatus: actionType === 'return' ? ('Refund Pending' as const) : o.paymentStatus,
             trackingSteps: [
               ...o.trackingSteps,
               {
@@ -1235,34 +1963,229 @@ class StoreService {
       });
 
       if (found) {
-        await AsyncStorage.setItem(STORE_KEYS.ORDERS, JSON.stringify(updated));
-        return true;
+        await AsyncStorage.setItem(orderKey, JSON.stringify(updated));
+        const updatedOrder = updated.find((o) => o.id === orderId);
+        return { success: true, order: updatedOrder };
       }
-      return false;
-    } catch (e) {
-      console.warn('Failed to return order:', e);
-      return false;
+      return { success: false, error: 'Only delivered orders within the 14-day window are eligible for return.' };
+    } catch {
+      return { success: false, error: 'Return request failed.' };
     }
   }
 
-  async getAddresses(): Promise<DeliveryAddress[]> {
+  async reorder(
+    orderId: string
+  ): Promise<{ success: boolean; summary?: ReorderSummary; error?: string }> {
     try {
-      const data = await AsyncStorage.getItem(STORE_KEYS.ADDRESSES);
-      if (!data) {
-        await AsyncStorage.setItem(
-          STORE_KEYS.ADDRESSES,
-          JSON.stringify(DEFAULT_ADDRESSES)
-        );
-        return DEFAULT_ADDRESSES;
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/orders/${orderId}/reorder`, {
+        method: 'POST',
+        headers,
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.success) {
+        // Sync local cart cache if items were added
+        if (json.bag?.items) {
+          const user = await authService.getSession();
+          const userId = user?.id;
+          const cartKey = userId
+            ? `${STORE_KEYS.CART_USER_PREFIX}${userId}`
+            : STORE_KEYS.CART_GUEST;
+          await AsyncStorage.setItem(cartKey, JSON.stringify(json.bag.items));
+        }
+
+        return {
+          success: true,
+          summary: json.summary,
+        };
       }
-      return JSON.parse(data);
-    } catch {
-      return DEFAULT_ADDRESSES;
+
+      if (json?.error) {
+        return { success: false, error: json.error };
+      }
+      return { success: false, error: 'Failed to process reorder.' };
+    } catch (e: any) {
+      console.warn('Reorder API failed:', e);
+      return { success: false, error: e?.message || 'Network error while reordering.' };
     }
+  }
+
+  getInvoiceDownloadUrl(orderId: string, format = 'pdf', token?: string): string {
+    const base = `${getApiBaseUrl()}/orders/${orderId}/invoice?format=${format}`;
+    return token ? `${base}&token=${encodeURIComponent(token)}` : base;
+  }
+
+  async downloadInvoicePdf(
+    orderId: string,
+    onProgress?: (progressPercent: number) => void
+  ): Promise<{ success: boolean; uri?: string; error?: string }> {
+    try {
+      const token = await authService.getToken();
+      const apiUrl = getApiBaseUrl();
+      const url = `${apiUrl}/orders/${orderId}/invoice?format=pdf${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+
+      if (Platform.OS === 'web') {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch(url, { headers });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          throw new Error(errData?.error || `Failed to download invoice (HTTP ${res.status})`);
+        }
+        const blob = await res.blob();
+        if (blob.size === 0) {
+          throw new Error('Received empty invoice PDF document.');
+        }
+
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `Invoice-${orderId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+        return { success: true };
+      } else {
+        // Native mobile (Android & iOS)
+        const targetFilename = `Invoice-${orderId}.pdf`;
+        const dir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+        const fileUri = `${dir}${targetFilename}`;
+
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const downloadResumable = FileSystem.createDownloadResumable(
+          url,
+          fileUri,
+          { headers },
+          (downloadProgress) => {
+            if (downloadProgress.totalBytesExpectedToWrite > 0 && onProgress) {
+              const progress = Math.round(
+                (downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite) * 100
+              );
+              onProgress(progress);
+            }
+          }
+        );
+
+        const result = await downloadResumable.downloadAsync();
+        if (!result || !result.uri) {
+          throw new Error('Failed to save invoice file to device storage.');
+        }
+
+        // Allow user to view, print, or save to Downloads / Drive
+        const isSharingAvailable = await Sharing.isAvailableAsync().catch(() => false);
+        if (isSharingAvailable) {
+          await Sharing.shareAsync(result.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Tax Invoice - Order #${orderId}`,
+            UTI: 'com.adobe.pdf',
+          });
+        }
+
+        return { success: true, uri: result.uri };
+      }
+    } catch (err: any) {
+      console.error('downloadInvoicePdf error:', err);
+      return { success: false, error: err?.message || 'Failed to download invoice.' };
+    }
+  }
+
+  async fetchInvoiceData(orderId: string): Promise<any> {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${getApiBaseUrl()}/orders/${orderId}/invoice?format=json`, {
+      headers,
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      throw new Error(json?.error || 'Failed to fetch invoice details.');
+    }
+    return await res.json();
+  }
+
+  getAddressStorageKey(userId?: string): string {
+    return userId
+      ? `${STORE_KEYS.ADDRESSES_USER_PREFIX}${userId}`
+      : STORE_KEYS.ADDRESSES_GUEST;
+  }
+
+  async getAddresses(explicitUserId?: string): Promise<DeliveryAddress[]> {
+    const token = await authService.getToken();
+    const user = await authService.getSession();
+    const userId = explicitUserId || user?.id;
+
+    if (token) {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${getApiBaseUrl()}/addresses`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const list: DeliveryAddress[] = Array.isArray(data.addresses) ? data.addresses : [];
+          const key = this.getAddressStorageKey(userId);
+          await AsyncStorage.setItem(key, JSON.stringify(list));
+          return list;
+        }
+      } catch (e) {
+        console.warn('Backend unavailable, reading cached user addresses:', e);
+      }
+    }
+
+    // Offline or guest: read from partitioned storage
+    try {
+      const key = this.getAddressStorageKey(userId);
+      const data = await AsyncStorage.getItem(key);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch {}
+
+    // Empty state: never leak another user's addresses
+    return [];
   }
 
   async saveAddress(address: DeliveryAddress): Promise<DeliveryAddress[]> {
-    const addresses = await this.getAddresses();
+    const token = await authService.getToken();
+    const user = await authService.getSession();
+    const userId = user?.id;
+
+    if (token) {
+      try {
+        const headers = await getAuthHeaders();
+        const isUpdate = address.id && !address.id.startsWith('addr-') && !address.id.startsWith('temp-');
+        const url = isUpdate ? `${getApiBaseUrl()}/addresses/${address.id}` : `${getApiBaseUrl()}/addresses`;
+        const method = isUpdate ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(address),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const list: DeliveryAddress[] = Array.isArray(data.addresses) ? data.addresses : [];
+          const key = this.getAddressStorageKey(userId);
+          await AsyncStorage.setItem(key, JSON.stringify(list));
+          return list;
+        }
+      } catch (e) {
+        console.warn('Failed to save address to backend, saving locally:', e);
+      }
+    }
+
+    // Guest / local fallback
+    const addresses = await this.getAddresses(userId);
     if (address.isDefault) {
       addresses.forEach((a) => (a.isDefault = false));
     }
@@ -1272,56 +2195,500 @@ class StoreService {
     } else {
       addresses.push(address);
     }
-    await AsyncStorage.setItem(STORE_KEYS.ADDRESSES, JSON.stringify(addresses));
+    const key = this.getAddressStorageKey(userId);
+    await AsyncStorage.setItem(key, JSON.stringify(addresses));
     return addresses;
   }
 
   async deleteAddress(addressId: string): Promise<DeliveryAddress[]> {
-    const addresses = await this.getAddresses();
+    const token = await authService.getToken();
+    const user = await authService.getSession();
+    const userId = user?.id;
+
+    if (token) {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${getApiBaseUrl()}/addresses/${addressId}`, {
+          method: 'DELETE',
+          headers,
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const list: DeliveryAddress[] = Array.isArray(data.addresses) ? data.addresses : [];
+          const key = this.getAddressStorageKey(userId);
+          await AsyncStorage.setItem(key, JSON.stringify(list));
+          return list;
+        }
+      } catch (e) {
+        console.warn('Failed to delete address on backend, deleting locally:', e);
+      }
+    }
+
+    const addresses = await this.getAddresses(userId);
     const filtered = addresses.filter((a) => a.id !== addressId);
     if (filtered.length > 0 && !filtered.some((a) => a.isDefault)) {
       filtered[0].isDefault = true;
     }
-    await AsyncStorage.setItem(STORE_KEYS.ADDRESSES, JSON.stringify(filtered));
+    const key = this.getAddressStorageKey(userId);
+    await AsyncStorage.setItem(key, JSON.stringify(filtered));
     return filtered;
   }
 
   async setDefaultAddress(addressId: string): Promise<DeliveryAddress[]> {
-    const addresses = await this.getAddresses();
+    const token = await authService.getToken();
+    const user = await authService.getSession();
+    const userId = user?.id;
+
+    if (token) {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${getApiBaseUrl()}/addresses/${addressId}/default`, {
+          method: 'PATCH',
+          headers,
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const list: DeliveryAddress[] = Array.isArray(data.addresses) ? data.addresses : [];
+          const key = this.getAddressStorageKey(userId);
+          await AsyncStorage.setItem(key, JSON.stringify(list));
+          return list;
+        }
+      } catch (e) {
+        console.warn('Failed to set default address on backend, updating locally:', e);
+      }
+    }
+
+    const addresses = await this.getAddresses(userId);
     const updated = addresses.map((a) => ({
       ...a,
       isDefault: a.id === addressId,
     }));
-    await AsyncStorage.setItem(STORE_KEYS.ADDRESSES, JSON.stringify(updated));
+    const key = this.getAddressStorageKey(userId);
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
     return updated;
   }
 
-  async getRecentlyViewed(): Promise<string[]> {
+  async clearAddressCache(userId?: string): Promise<void> {
     try {
-      const data = await AsyncStorage.getItem(STORE_KEYS.RECENTLY_VIEWED);
-      return data ? JSON.parse(data) : [];
+      if (userId) {
+        await AsyncStorage.removeItem(this.getAddressStorageKey(userId));
+      }
+      await AsyncStorage.removeItem(STORE_KEYS.ADDRESSES);
+    } catch (e) {
+      console.warn('Failed to clear address cache:', e);
+    }
+  }
+
+  /**
+   * Complete user data isolation on logout:
+   * Wipes all account-specific cached data from frontend state and local storage.
+   * Preserves database records on backend.
+   */
+  async clearAccountLocalCache(userId?: string): Promise<void> {
+    try {
+      const keysToRemove: string[] = [
+        STORE_KEYS.ORDERS,
+        STORE_KEYS.CART_LEGACY,
+        STORE_KEYS.SAVED_FOR_LATER_LEGACY,
+        STORE_KEYS.WISHLIST_LEGACY,
+        STORE_KEYS.RECENTLY_VIEWED_LEGACY,
+        STORE_KEYS.ADDRESSES,
+      ];
+
+      if (userId) {
+        keysToRemove.push(
+          `${STORE_KEYS.ORDERS_USER_PREFIX}${userId}`,
+          `${STORE_KEYS.CART_USER_PREFIX}${userId}`,
+          `${STORE_KEYS.SAVED_FOR_LATER_USER_PREFIX}${userId}`,
+          `${STORE_KEYS.WISHLIST_USER_PREFIX}${userId}`,
+          `${STORE_KEYS.RECENTLY_VIEWED_USER_PREFIX}${userId}`,
+          `${STORE_KEYS.ADDRESSES_USER_PREFIX}${userId}`,
+          `${STORE_KEYS.NOTIFICATION_PREFS_USER_PREFIX}${userId}`
+        );
+      }
+
+      await Promise.all(
+        keysToRemove.map((key) => AsyncStorage.removeItem(key).catch(() => {}))
+      );
+    } catch (e) {
+      console.warn('Failed to clear account local cache:', e);
+    }
+  }
+
+  getRecentlyViewedStorageKey(userId?: string): string {
+    return userId
+      ? `${STORE_KEYS.RECENTLY_VIEWED_USER_PREFIX}${userId}`
+      : STORE_KEYS.RECENTLY_VIEWED_GUEST;
+  }
+
+  /**
+   * Get recently viewed product IDs (latest 20 unique, newest first)
+   * Fetches from backend API if authenticated, falling back to local storage.
+   * For guests, reads from local guest storage.
+   */
+  async getRecentlyViewed(userId?: string): Promise<string[]> {
+    const token = await authService.getToken();
+
+    if (userId || token) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${getApiBaseUrl()}/recently-viewed?limit=50`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData && Array.isArray(resData.productIds)) {
+            const ids = resData.productIds.slice(0, 50);
+            const userKey = this.getRecentlyViewedStorageKey(userId);
+            await AsyncStorage.setItem(userKey, JSON.stringify(ids));
+            return ids;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend fetch recently viewed failed, falling back to local storage:', err);
+      }
+
+      // Offline / network failure fallback for authenticated user
+      try {
+        const userKey = this.getRecentlyViewedStorageKey(userId);
+        const saved = await AsyncStorage.getItem(userKey);
+        if (saved) return JSON.parse(saved).slice(0, 50);
+      } catch {}
+    }
+
+    // Guest user local storage
+    try {
+      let data = await AsyncStorage.getItem(STORE_KEYS.RECENTLY_VIEWED_GUEST);
+      if (!data) {
+        // Fallback to legacy key
+        data = await AsyncStorage.getItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY);
+      }
+      return data ? JSON.parse(data).slice(0, 50) : [];
     } catch {
       return [];
     }
   }
 
-  async addRecentlyViewed(productId: string): Promise<string[]> {
+  /**
+   * Track a product view.
+   * Stores latest 50 unique products, newest first.
+   * Re-viewing moves product to top without creating duplicates.
+   * Persists to server if user is logged in, and updates local storage.
+   */
+  async addRecentlyViewed(productId: string, userId?: string): Promise<string[]> {
+    const cleanId = String(productId || '').trim();
+    if (!cleanId) return await this.getRecentlyViewed(userId);
+
+    const token = await authService.getToken();
+
+    if (userId || token) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${getApiBaseUrl()}/recently-viewed`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ productId: cleanId }),
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData && Array.isArray(resData.productIds)) {
+            const ids = resData.productIds.slice(0, 50);
+            const userKey = this.getRecentlyViewedStorageKey(userId);
+            await AsyncStorage.setItem(userKey, JSON.stringify(ids));
+            return ids;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend add recently viewed failed, falling back to local storage:', err);
+      }
+
+      // Offline fallback for authenticated user
+      try {
+        const userKey = this.getRecentlyViewedStorageKey(userId);
+        const data = await AsyncStorage.getItem(userKey);
+        const current: string[] = data ? JSON.parse(data) : [];
+        const updated = [cleanId, ...current.filter((id) => id !== cleanId)].slice(0, 50);
+        await AsyncStorage.setItem(userKey, JSON.stringify(updated));
+        return updated;
+      } catch {
+        return [cleanId];
+      }
+    }
+
+    // Guest user tracking in local storage
     try {
-      let ids = await this.getRecentlyViewed();
-      ids = [productId, ...ids.filter((id) => id !== productId)].slice(0, 10);
-      await AsyncStorage.setItem(STORE_KEYS.RECENTLY_VIEWED, JSON.stringify(ids));
-      return ids;
+      const guestKey = STORE_KEYS.RECENTLY_VIEWED_GUEST;
+      let current: string[] = [];
+      const data = await AsyncStorage.getItem(guestKey);
+      if (data) {
+        current = JSON.parse(data);
+      } else {
+        const legacy = await AsyncStorage.getItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY);
+        if (legacy) current = JSON.parse(legacy);
+      }
+
+      const updated = [cleanId, ...current.filter((id) => id !== cleanId)].slice(0, 50);
+      await AsyncStorage.setItem(guestKey, JSON.stringify(updated));
+      await AsyncStorage.setItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY, JSON.stringify(updated));
+      return updated;
     } catch {
-      return [];
+      return [cleanId];
     }
   }
 
-  async clearRecentlyViewed(): Promise<void> {
+  /**
+   * Merge guest recently viewed items into server/user account upon login
+   * Removes duplicates, preserves newest first, caps at 50, and syncs to backend.
+   */
+  async mergeGuestRecentlyViewed(userId: string): Promise<string[]> {
     try {
-      await AsyncStorage.setItem(STORE_KEYS.RECENTLY_VIEWED, JSON.stringify([]));
+      let guestIds: string[] = [];
+      const guestData = await AsyncStorage.getItem(STORE_KEYS.RECENTLY_VIEWED_GUEST);
+      if (guestData) {
+        guestIds = JSON.parse(guestData);
+      } else {
+        const legacy = await AsyncStorage.getItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY);
+        if (legacy) guestIds = JSON.parse(legacy);
+      }
+
+      const token = await authService.getToken();
+
+      // If user has token and guest items exist, sync batch to backend
+      if (token && guestIds.length > 0) {
+        try {
+          const headers = await getAuthHeaders();
+          const response = await fetch(`${getApiBaseUrl()}/recently-viewed/sync`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ productIds: guestIds }),
+          });
+
+          if (response.ok) {
+            const resData = await response.json();
+            if (resData && Array.isArray(resData.productIds)) {
+              const ids = resData.productIds.slice(0, 50);
+              const userKey = this.getRecentlyViewedStorageKey(userId);
+              await AsyncStorage.setItem(userKey, JSON.stringify(ids));
+              await AsyncStorage.removeItem(STORE_KEYS.RECENTLY_VIEWED_GUEST);
+              await AsyncStorage.removeItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY);
+              return ids;
+            }
+          }
+        } catch (e) {
+          console.warn('Backend sync recently viewed batch failed, falling back to local merge:', e);
+        }
+      }
+
+      // Local fallback merge
+      const userKey = this.getRecentlyViewedStorageKey(userId);
+      const userData = await AsyncStorage.getItem(userKey);
+      const userIds: string[] = userData ? JSON.parse(userData) : [];
+
+      const mergedList = Array.from(new Set([...guestIds, ...userIds])).slice(0, 50);
+
+      await AsyncStorage.setItem(userKey, JSON.stringify(mergedList));
+      await AsyncStorage.removeItem(STORE_KEYS.RECENTLY_VIEWED_GUEST);
+      await AsyncStorage.removeItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY);
+
+      return mergedList;
+    } catch (e) {
+      console.warn('Failed to merge guest recently viewed:', e);
+      return await this.getRecentlyViewed(userId);
+    }
+  }
+
+  async clearRecentlyViewed(userId?: string): Promise<void> {
+    try {
+      const token = await authService.getToken();
+      if (userId || token) {
+        try {
+          const headers = await getAuthHeaders();
+          await fetch(`${getApiBaseUrl()}/recently-viewed`, {
+            method: 'DELETE',
+            headers,
+          });
+        } catch (err) {
+          console.warn('Backend clear recently viewed failed:', err);
+        }
+        if (userId) {
+          const userKey = this.getRecentlyViewedStorageKey(userId);
+          await AsyncStorage.setItem(userKey, JSON.stringify([]));
+        }
+      }
+
+      await AsyncStorage.setItem(STORE_KEYS.RECENTLY_VIEWED_GUEST, JSON.stringify([]));
+      await AsyncStorage.setItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY, JSON.stringify([]));
     } catch (e) {
       console.warn('Failed to clear recently viewed:', e);
     }
+  }
+
+  /* ========================================================
+   * TASK 6: PERSONALIZED RECOMMENDATIONS API
+   * ======================================================== */
+
+  /**
+   * Fetch personalized recommendations based on actual user activity (viewed, wishlist, orders, bag)
+   * or popular/trending picks for cold-start and guests.
+   */
+  async fetchRecommendations(options: {
+    limit?: number;
+    excludeProductId?: string;
+    category?: string;
+    userId?: string;
+  } = {}): Promise<RecommendationResult> {
+    const { limit = 10, excludeProductId, category, userId } = options;
+    const token = await authService.getToken();
+
+    try {
+      const headers = await getAuthHeaders();
+      const params = new URLSearchParams();
+      params.append('limit', String(limit));
+      if (excludeProductId) params.append('excludeProductId', excludeProductId);
+      if (category && category !== 'all') params.append('category', category);
+
+      // If user is guest (no token/userId), attach guest browsing history for guest personalization
+      if (!token && !userId) {
+        const guestHistory = await this.getRecentlyViewed();
+        if (guestHistory && guestHistory.length > 0) {
+          params.append('guestHistory', guestHistory.join(','));
+        }
+      }
+
+      const response = await fetch(`${getApiBaseUrl()}/recommendations?${params.toString()}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.success && Array.isArray(data.products)) {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend fetch recommendations failed, using resilient fallback:', e);
+    }
+
+    // Resilient fallback (offline or network failure)
+    return this.getLocalRecommendationsFallback(options);
+  }
+
+  /**
+   * Fetch similar products for a product details screen
+   */
+  async fetchSimilarProducts(productId: string, limit: number = 6): Promise<Product[]> {
+    if (!productId) return [];
+    try {
+      const response = await fetch(
+        `${getApiBaseUrl()}/products/${encodeURIComponent(productId)}/similar?limit=${limit}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.success && Array.isArray(data.products)) {
+          return data.products;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend fetch similar products failed, using local fallback:', e);
+    }
+
+    // Local fallback: derive from PRODUCTS
+    const target = PRODUCTS.find((p) => p.id === productId);
+    if (!target) return PRODUCTS.slice(0, limit);
+
+    const sameSub = PRODUCTS.filter(
+      (p) =>
+        p.id !== target.id &&
+        p.inStock !== false &&
+        (p.category || '').toLowerCase() === (target.category || '').toLowerCase() &&
+        (p.subcategory || '').toLowerCase() === (target.subcategory || '').toLowerCase()
+    );
+    if (sameSub.length >= limit) return sameSub.slice(0, limit);
+
+    const sameCat = PRODUCTS.filter(
+      (p) =>
+        p.id !== target.id &&
+        p.inStock !== false &&
+        (p.category || '').toLowerCase() === (target.category || '').toLowerCase() &&
+        !sameSub.some((s) => s.id === p.id)
+    );
+    return [...sameSub, ...sameCat].slice(0, limit);
+  }
+
+  /**
+   * Resilient local fallback when backend is unreachable
+   */
+  private async getLocalRecommendationsFallback(options: {
+    limit?: number;
+    excludeProductId?: string;
+    category?: string;
+    userId?: string;
+  }): Promise<RecommendationResult> {
+    const { limit = 10, excludeProductId, category, userId } = options;
+    const allProducts = PRODUCTS;
+
+    const wishlistIds = await this.getWishlist(userId);
+    const recentlyViewedIds = await this.getRecentlyViewed(userId);
+    const isPersonalized = wishlistIds.length > 0 || recentlyViewedIds.length > 0;
+
+    // Filter available
+    let available = allProducts.filter(
+      (p) => p.inStock !== false && p.id !== excludeProductId
+    );
+
+    if (category && category !== 'all') {
+      const catClean = category.toLowerCase();
+      available = available.filter(
+        (p) => (p.category || '').toLowerCase() === catClean
+      );
+    }
+
+    // Rank by rating and flags
+    const products: RecommendationProduct[] = available
+      .sort((a, b) => {
+        const scoreA = (a.rating || 0) * 2 + (a.isBestseller ? 5 : 0) + (a.isTrending ? 4 : 0);
+        const scoreB = (b.rating || 0) * 2 + (b.isBestseller ? 5 : 0) + (b.isTrending ? 4 : 0);
+        return scoreB - scoreA;
+      })
+      .slice(0, limit)
+      .map((p) => ({
+        ...p,
+        recommendationReason: p.isBestseller
+          ? 'Bestseller in fashion'
+          : p.isTrending
+          ? 'Trending style'
+          : `Top Rated (${p.rating} ★)`,
+      }));
+
+    return {
+      success: true,
+      isPersonalized,
+      type: isPersonalized ? 'personalized' : 'trending',
+      title: isPersonalized ? 'YOU MAY ALSO LIKE' : 'POPULAR & TRENDING PICKS',
+      subtitle: isPersonalized
+        ? 'Handpicked styles based on your style'
+        : 'Top rated styles across fashion catalog',
+      total: products.length,
+      count: products.length,
+      products,
+      signalsUsed: {
+        browsingHistoryCount: recentlyViewedIds.length,
+        wishlistCount: wishlistIds.length,
+        orderCount: 0,
+        cartCount: 0,
+        topCategories: [],
+      },
+    };
   }
 
   async getRecentSearches(): Promise<string[]> {
@@ -1397,20 +2764,24 @@ class StoreService {
     return 'rzp_test_placeholder';
   }
 
-  async createRazorpayOrder(amount: number, receipt?: string): Promise<{
+  async createRazorpayOrder(amount: number, receipt?: string, internalOrderId?: string): Promise<{
     success: boolean;
     orderId: string;
+    internalOrderId?: string;
     amount: number;
     currency: string;
     keyId: string;
     isLive?: boolean;
+    sandbox?: boolean;
+    message?: string;
     error?: string;
   }> {
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch(`${getApiBaseUrl()}/payment/create-order`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, receipt }),
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ amount, receipt, internalOrderId }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -1432,23 +2803,425 @@ class StoreService {
   async verifyRazorpayPayment(
     orderId: string,
     paymentId: string,
-    signature: string
-  ): Promise<{ success: boolean; verified: boolean; error?: string }> {
+    signature: string,
+    internalOrderId?: string,
+    amount?: number,
+    userId?: string
+  ): Promise<{ success: boolean; verified: boolean; paymentStatus?: string; error?: string }> {
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch(`${getApiBaseUrl()}/payment/verify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           razorpay_order_id: orderId,
           razorpay_payment_id: paymentId,
           razorpay_signature: signature,
+          internalOrderId,
+          amount,
+          userId,
         }),
       });
       const data = await res.json();
-      return { success: res.ok && data.success, verified: Boolean(data.verified), error: data.error };
+      return {
+        success: res.ok && data.success,
+        verified: Boolean(data.verified),
+        paymentStatus: data.paymentStatus,
+        error: data.error,
+      };
     } catch (err: any) {
       return { success: false, verified: false, error: err?.message };
     }
+  }
+
+  async reportPaymentFailure(orderId: string, error?: string): Promise<boolean> {
+    try {
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/payment/fail`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ orderId, error }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async reportPaymentCancellation(orderId: string): Promise<boolean> {
+    try {
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/payment/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ orderId }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  getPaymentCheckoutUrl(orderId: string): string {
+    return `${getApiBaseUrl()}/payment/checkout/${orderId}`;
+  }
+
+  /* ========================================================
+   * 6. NOTIFICATION API METHODS
+   * ======================================================== */
+
+  /**
+   * Register device push token with backend
+   */
+  async registerDeviceToken(
+    pushToken: string,
+    details?: { platform?: string; deviceName?: string; deviceId?: string }
+  ): Promise<boolean> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/register-device`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          pushToken,
+          platform: details?.platform || Platform.OS,
+          deviceName: details?.deviceName,
+          deviceId: details?.deviceId,
+        }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Failed to register device token with backend:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Deactivate device push token with backend on logout
+   */
+  async unregisterDeviceToken(pushToken: string): Promise<boolean> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/unregister-device`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ pushToken }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Failed to unregister device token with backend:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Fetch paginated notifications for current user from GET /api/notifications
+   */
+  async fetchNotifications(
+    page: number = 1,
+    limit: number = 20,
+    category: string = 'all'
+  ): Promise<{
+    notifications: AppNotification[];
+    total: number;
+    unreadCount: number;
+    totalPages: number;
+  }> {
+    const token = await authService.getToken();
+    if (!token) {
+      // Unauthenticated guests have 0 private notifications
+      return { notifications: [], total: 0, unreadCount: 0, totalPages: 1 };
+    }
+
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(
+        `${getApiBaseUrl()}/notifications?page=${page}&limit=${limit}&category=${category}`,
+        {
+          method: 'GET',
+          headers,
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          notifications: data.notifications || [],
+          total: data.total || 0,
+          unreadCount: data.unreadCount || 0,
+          totalPages: data.totalPages || 1,
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to fetch notifications from API:', e);
+    }
+
+    return { notifications: [], total: 0, unreadCount: 0, totalPages: 1 };
+  }
+
+  /**
+   * Fetch accurate unread notification count for badge from GET /api/notifications/unread-count
+   */
+  async fetchUnreadNotificationCount(): Promise<number> {
+    const token = await authService.getToken();
+    if (!token) {
+      // Unauthenticated guest: unread count is always 0
+      return 0;
+    }
+
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/unread-count`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.unreadCount || 0;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch unread notification count:', e);
+    }
+    return 0;
+  }
+
+  /**
+   * Mark individual notification as read via PATCH /api/notifications/:id/read
+   */
+  async markNotificationRead(id: string): Promise<boolean> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers,
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Failed to mark notification as read:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Mark all notifications as read via PATCH /api/notifications/read-all
+   */
+  async markAllNotificationsRead(): Promise<boolean> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/read-all`, {
+        method: 'PATCH',
+        headers,
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Failed to mark all notifications as read:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Delete a notification via DELETE /api/notifications/:id
+   */
+  async deleteNotification(id: string): Promise<boolean> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Failed to delete notification:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Fetch user notification preferences from GET /api/notifications/preferences
+   */
+  async fetchNotificationPreferences(): Promise<NotificationPreferences> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/preferences`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.preferences;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch notification preferences from API:', e);
+    }
+
+    return this.getGuestNotificationPreferences();
+  }
+
+  /**
+   * Update user notification preferences via PATCH /api/notifications/preferences
+   */
+  async updateNotificationPreferences(
+    prefs: Partial<NotificationPreferences>
+  ): Promise<NotificationPreferences | null> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/preferences`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(prefs),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.preferences;
+      }
+    } catch (e) {
+      console.warn('Failed to update notification preferences on API:', e);
+    }
+
+    // Fallback locally
+    const current = await this.getGuestNotificationPreferences();
+    const updated = { ...current, ...prefs };
+    await this.saveGuestNotificationPreferences(updated);
+    return updated;
+  }
+
+  /**
+   * Get guest notification preferences from local AsyncStorage
+   */
+  async getGuestNotificationPreferences(): Promise<NotificationPreferences> {
+    const defaults: NotificationPreferences = {
+      pushNotificationsEnabled: true,
+      devicePushEnabled: true,
+      orderUpdates: true,
+      paymentUpdates: true,
+      wishlistPriceDrops: true,
+      stockAlerts: true,
+      promotions: true,
+      cartReminders: true,
+    };
+
+    try {
+      const raw = await AsyncStorage.getItem(STORE_KEYS.NOTIFICATION_PREFS_GUEST);
+      if (raw) {
+        return { ...defaults, ...JSON.parse(raw) };
+      }
+    } catch (e) {
+      console.warn('Failed to read guest notification preferences:', e);
+    }
+
+    return defaults;
+  }
+
+  /**
+   * Save guest notification preferences to local AsyncStorage
+   */
+  async saveGuestNotificationPreferences(prefs: NotificationPreferences): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORE_KEYS.NOTIFICATION_PREFS_GUEST, JSON.stringify(prefs));
+    } catch (e) {
+      console.warn('Failed to save guest notification preferences:', e);
+    }
+  }
+
+  /**
+   * Synchronize guest preferences to user profile in backend after login
+   */
+  async syncNotificationPreferencesOnLogin(): Promise<void> {
+    try {
+      const guestPrefs = await this.getGuestNotificationPreferences();
+      await this.updateNotificationPreferences(guestPrefs);
+    } catch (e) {
+      console.warn('Failed to sync notification preferences on login:', e);
+    }
+  }
+
+  /**
+   * Trigger test notification event via POST /api/notifications/test-event
+   */
+  async triggerTestNotification(eventType: string, extraData: any = {}): Promise<any> {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${getApiBaseUrl()}/notifications/test-event`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          eventType,
+          ...extraData,
+        }),
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('Failed to trigger test notification:', e);
+      return { success: false };
+    }
+  }
+
+  /**
+   * Real-time subscription to backend inventory stock and notification updates via SSE
+   */
+  subscribeToRealtimeUpdates(callbacks: {
+    onStockUpdate?: (data: { productId: string; stockCount: number; inStock: boolean; timestamp: string }) => void;
+    onOrderUpdate?: (data: { orderId: string; status: string; paymentStatus?: string; timestamp: string }) => void;
+    onNotification?: (data: { notification: any; timestamp: string }) => void;
+  }): () => void {
+    let isSubscribed = true;
+    let eventSource: any = null;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'EventSource' in window) {
+      try {
+        authService
+          .getToken()
+          .then((token) => {
+            if (!isSubscribed) return;
+            const streamUrl = token
+              ? `${getApiBaseUrl()}/realtime/stream?token=${encodeURIComponent(token)}`
+              : `${getApiBaseUrl()}/realtime/stream`;
+
+            eventSource = new EventSource(streamUrl);
+
+            eventSource.addEventListener('stock_update', (e: any) => {
+              if (!isSubscribed) return;
+              try {
+                const data = JSON.parse(e.data);
+                callbacks.onStockUpdate?.(data);
+              } catch {}
+            });
+
+            eventSource.addEventListener('order_update', (e: any) => {
+              if (!isSubscribed) return;
+              try {
+                const data = JSON.parse(e.data);
+                callbacks.onOrderUpdate?.(data);
+              } catch {}
+            });
+
+            eventSource.addEventListener('notification', (e: any) => {
+              if (!isSubscribed) return;
+              try {
+                const data = JSON.parse(e.data);
+                callbacks.onNotification?.(data);
+              } catch {}
+            });
+          })
+          .catch((err) => {
+            console.warn('Realtime subscription token lookup failed:', err);
+          });
+      } catch (err) {
+        console.warn('Realtime EventSource subscription failed:', err);
+      }
+    }
+
+    return () => {
+      isSubscribed = false;
+      if (eventSource) {
+        try {
+          eventSource.close();
+        } catch {}
+      }
+    };
   }
 }
 

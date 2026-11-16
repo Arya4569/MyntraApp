@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -99,6 +100,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // 5. Order Placement Submission State
   const [isPlacing, setIsPlacing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [unconfiguredNoticeOrder, setUnconfiguredNoticeOrder] = useState<Order | null>(null);
 
   // Load saved addresses on open
   useEffect(() => {
@@ -108,14 +110,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         if (isMounted) {
           setAddresses(list);
           const defaultAddr = list.find((a) => a.isDefault) || list[0];
-          if (defaultAddr) setSelectedAddressId(defaultAddr.id);
+          setSelectedAddressId(defaultAddr ? defaultAddr.id : '');
         }
       });
     }
     return () => {
       isMounted = false;
     };
-  }, [visible]);
+  }, [visible, user?.id]);
 
   // Sync user profile name/mobile if loaded
   const [prevUser, setPrevUser] = useState(user);
@@ -368,12 +370,46 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setIsPlacing(true);
 
       try {
-        const rzpOrder = await storeService.createRazorpayOrder(finalPayableAmount);
+        // Step 1: Create a pending order on the backend BEFORE initiating payment
+        const pendingOrder = await storeService.placeOrder(
+          cartItems,
+          addressStr,
+          appliedCouponCode,
+          activeCouponDiscount,
+          'Razorpay (Pending Payment)',
+          user?.id
+        );
+
+        if (!pendingOrder || !pendingOrder.id) {
+          throw new Error('Failed to create pending order record on backend.');
+        }
+
+        // Step 2: Create Razorpay gateway order tied to the internal order ID
+        const rzpOrder = await storeService.createRazorpayOrder(
+          finalPayableAmount,
+          undefined,
+          pendingOrder.id
+        );
+
         if (!rzpOrder.success || !rzpOrder.orderId) {
           throw new Error(rzpOrder.error || 'Failed to initialize Razorpay payment gateway.');
         }
 
-        // Web / PWA checkout via official Razorpay modal
+        const isLiveKey = Boolean(
+          rzpOrder.isLive &&
+          rzpOrder.keyId &&
+          !rzpOrder.keyId.includes('placeholder')
+        );
+
+        // If credentials are placeholder / unconfigured in server/.env:
+        // Do NOT simulate fake success! Inform the user honestly, keep order safely as Pending
+        if (!isLiveKey) {
+          setIsPlacing(false);
+          setUnconfiguredNoticeOrder(pendingOrder);
+          return;
+        }
+
+        // Step 3: Web / PWA checkout via official Razorpay checkout.js modal
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
           const loadScript = (): Promise<boolean> => {
             return new Promise((resolve) => {
@@ -390,11 +426,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           const scriptLoaded = await loadScript();
           if (scriptLoaded && (window as any).Razorpay) {
             const options = {
-              key: rzpOrder.keyId || 'rzp_test_placeholder',
+              key: rzpOrder.keyId,
               amount: rzpOrder.amount,
               currency: rzpOrder.currency || 'INR',
               name: 'Myntra Fashion',
-              description: `Payment for ${cartItems.length} items`,
+              description: `Payment for Order #${pendingOrder.id}`,
               image: 'https://assets.myntassets.com/assets/images/retaillabs/2023/2/28/a9cd936f-5b65-4f47-8a61-9c8dfb5a6c4b1677567702582-Myntra-logo.png',
               order_id: rzpOrder.orderId,
               handler: async function (response: any) {
@@ -402,23 +438,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   const verifyRes = await storeService.verifyRazorpayPayment(
                     response.razorpay_order_id || rzpOrder.orderId,
                     response.razorpay_payment_id,
-                    response.razorpay_signature
+                    response.razorpay_signature,
+                    pendingOrder.id,
+                    finalPayableAmount,
+                    user?.id
                   );
                   if (verifyRes.verified || verifyRes.success) {
-                    const order = await storeService.placeOrder(
-                      cartItems,
-                      addressStr,
-                      appliedCouponCode,
-                      activeCouponDiscount,
-                      `Razorpay Online (Payment ID: ${response.razorpay_payment_id})`,
-                      user?.id
-                    );
-                    onOrderSuccess(order);
+                    const freshOrder = await storeService.getOrderById(pendingOrder.id);
+                    onOrderSuccess(freshOrder || { ...pendingOrder, paymentStatus: 'Paid', status: 'Confirmed' });
                   } else {
-                    setOrderError('Payment verification failed. Please contact support.');
+                    await storeService.reportPaymentFailure(pendingOrder.id, 'Invalid HMAC SHA256 payment signature');
+                    setOrderError('Payment verification failed: Invalid transaction signature. Order preserved as Failed.');
                   }
                 } catch {
-                  setOrderError('Order placement failed after payment confirmation.');
+                  await storeService.reportPaymentFailure(pendingOrder.id, 'Verification network error');
+                  setOrderError('Payment verification network error. Your order is safely preserved as Pending.');
                 } finally {
                   setIsPlacing(false);
                 }
@@ -432,15 +466,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 color: '#ff3f6c',
               },
               modal: {
-                ondismiss: () => {
+                ondismiss: async () => {
+                  await storeService.reportPaymentCancellation(pendingOrder.id);
+                  setOrderError(`Payment dismissed. Order #${pendingOrder.id} is preserved as Cancelled/Pending with retry available.`);
                   setIsPlacing(false);
                 },
               },
             };
 
             const rzp = new (window as any).Razorpay(options);
-            rzp.on('payment.failed', function (resp: any) {
-              setOrderError(resp?.error?.description || 'Payment was declined or cancelled.');
+            rzp.on('payment.failed', async function (resp: any) {
+              const reason = resp?.error?.description || 'Payment was declined by bank or gateway.';
+              await storeService.reportPaymentFailure(pendingOrder.id, reason);
+              setOrderError(`${reason} Order #${pendingOrder.id} is preserved as Failed. You can safely retry.`);
               setIsPlacing(false);
             });
             rzp.open();
@@ -448,25 +486,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           }
         }
 
-        // Native Mobile / Sandbox verified handshake
-        const verifyRes = await storeService.verifyRazorpayPayment(
-          rzpOrder.orderId,
-          `pay_${Date.now()}`,
-          'signature_verified'
-        );
-
-        if (verifyRes.verified || verifyRes.success) {
-          const order = await storeService.placeOrder(
-            cartItems,
-            addressStr,
-            appliedCouponCode,
-            activeCouponDiscount,
-            `Razorpay UPI/Card (${rzpOrder.isLive ? 'Live' : 'Sandbox'})`,
-            user?.id
-          );
-          onOrderSuccess(order);
-        } else {
-          setOrderError('Payment verification failed.');
+        // Step 4: Native Mobile / Expo WebBrowser checkout session
+        try {
+          const checkoutUrl = storeService.getPaymentCheckoutUrl(pendingOrder.id);
+          await WebBrowser.openBrowserAsync(checkoutUrl);
+          const freshOrder = await storeService.getOrderById(pendingOrder.id);
+          if (freshOrder && freshOrder.paymentStatus === 'Paid') {
+            onOrderSuccess(freshOrder);
+          } else {
+            setOrderError(
+              `Payment not completed. Order #${pendingOrder.id} is saved with status "${freshOrder?.paymentStatus || 'Pending'}". You can safely retry anytime from My Orders.`
+            );
+          }
+        } catch (wbErr: any) {
+          setOrderError('Could not open payment window: ' + (wbErr?.message || 'Unknown error'));
         }
       } catch (err: any) {
         setOrderError(err?.message || 'Payment gateway connection error.');
@@ -1427,6 +1460,73 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Unconfigured Gateway Notice Dialog */}
+      {unconfiguredNoticeOrder && (
+        <Modal
+          visible={Boolean(unconfiguredNoticeOrder)}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setUnconfiguredNoticeOrder(null)}>
+          <View style={styles.noticeBackdrop}>
+            <View style={styles.noticeModalCard}>
+              <View style={styles.noticeIconBox}>
+                <Ionicons name="shield-checkmark" size={32} color="#b45309" />
+              </View>
+              <Text style={styles.noticeTitle}>Payment Gateway Setup Required</Text>
+              <Text style={styles.noticeOrderId}>Order #{unconfiguredNoticeOrder.id}</Text>
+              <Text style={styles.noticeBody}>
+                Your order has been recorded safely in the database with status{' '}
+                <Text style={{ fontWeight: '800', color: '#b45309' }}>Pending Payment</Text>.
+                {'\n\n'}
+                To process live card/UPI payments, configure valid RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in server/.env.
+              </Text>
+              <View style={styles.noticeActions}>
+                <TouchableOpacity
+                  style={styles.noticePrimaryBtn}
+                  onPress={() => {
+                    const ord = unconfiguredNoticeOrder;
+                    setUnconfiguredNoticeOrder(null);
+                    onOrderSuccess(ord);
+                  }}>
+                  <Text style={styles.noticePrimaryBtnText}>VIEW IN MY ORDERS (PENDING)</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.noticeSecondaryBtn}
+                  onPress={async () => {
+                    setUnconfiguredNoticeOrder(null);
+                    setPaymentMethod('cod');
+                    try {
+                      setIsPlacing(true);
+                      const codOrder = await storeService.placeOrder(
+                        cartItems,
+                        unconfiguredNoticeOrder.shippingAddress,
+                        appliedCouponCode,
+                        activeCouponDiscount,
+                        'Cash on Delivery (COD)',
+                        user?.id
+                      );
+                      onOrderSuccess(codOrder);
+                    } catch (e: any) {
+                      setOrderError('Failed to switch to Cash on Delivery: ' + e?.message);
+                    } finally {
+                      setIsPlacing(false);
+                    }
+                  }}>
+                  <Text style={styles.noticeSecondaryBtnText}>SWITCH TO CASH ON DELIVERY</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.noticeCancelBtn}
+                  onPress={() => setUnconfiguredNoticeOrder(null)}>
+                  <Text style={styles.noticeCancelBtnText}>CLOSE</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 
@@ -2467,5 +2567,92 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#065f46',
+  },
+  noticeBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noticeModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 440,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  noticeIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#fef3c7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  noticeTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: MyntraColors.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  noticeOrderId: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: MyntraColors.primary,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  noticeBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#4b5563',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  noticeActions: {
+    width: '100%',
+    gap: 10,
+  },
+  noticePrimaryBtn: {
+    backgroundColor: MyntraColors.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  noticePrimaryBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  noticeSecondaryBtn: {
+    backgroundColor: '#f3f4f6',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  noticeSecondaryBtnText: {
+    color: MyntraColors.text,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  noticeCancelBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  noticeCancelBtnText: {
+    color: MyntraColors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

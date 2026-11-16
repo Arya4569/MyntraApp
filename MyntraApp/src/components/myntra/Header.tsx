@@ -1,36 +1,65 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { MyntraColors } from '@/constants/myntra-theme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface HeaderProps {
   wishlistCount: number;
   bagCount: number;
+  notificationCount?: number;
   isAuthenticated?: boolean;
   userName?: string;
   onPressProfile?: () => void;
   onPressWishlist?: () => void;
   onPressBag?: () => void;
+  onPressNotifications?: () => void;
   onPressSearch?: () => void;
   onPressLogo?: () => void;
   onPressInsider?: () => void;
+  activeTab?: string;
+  onSelectTab?: (tab: 'home' | 'categories' | 'wishlist' | 'profile') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   wishlistCount,
   bagCount,
+  notificationCount = 0,
   isAuthenticated = false,
   userName,
   onPressProfile,
   onPressWishlist,
   onPressBag,
+  onPressNotifications,
   onPressSearch,
   onPressLogo,
   onPressInsider,
+  activeTab = 'home',
+  onSelectTab,
 }) => {
+  const { colors, isDark } = useTheme();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 768;
+
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.surface,
+          borderBottomColor: colors.divider,
+          height: isDesktop ? 64 : 56,
+          paddingHorizontal: isDesktop ? 24 : 12,
+        },
+      ]}>
       {/* Brand Logo & Name */}
       <View style={styles.brandRow}>
         <TouchableOpacity
@@ -45,17 +74,96 @@ export const Header: React.FC<HeaderProps> = ({
             onPress={onPressLogo}
             activeOpacity={0.8}
             accessibilityLabel="Myntra Brand">
-            <Text style={styles.brandTitle}>MYNTRA</Text>
+            <Text style={[styles.brandTitle, { color: colors.text }]}>MYNTRA</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.insiderPill}
+            style={[
+              styles.insiderPill,
+              { backgroundColor: isDark ? colors.surfaceSecondary : '#f5f5f6' },
+            ]}
             onPress={onPressInsider}
             activeOpacity={0.7}
             accessibilityLabel="Myntra Insider VIP">
-            <Text style={styles.insiderText}>INSIDER ✦</Text>
+            <Text style={[styles.insiderText, { color: colors.textSecondary }]}>
+              INSIDER ✦
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Desktop Navigation Links (Only visible on web / desktop screens) */}
+      {isDesktop && onSelectTab && (
+        <View style={styles.desktopNavRow}>
+          <TouchableOpacity
+            style={[styles.desktopNavItem, activeTab === 'home' && styles.desktopNavItemActive]}
+            onPress={() => onSelectTab('home')}
+            activeOpacity={0.8}>
+            <Text
+              style={[
+                styles.desktopNavText,
+                { color: activeTab === 'home' ? colors.primary : colors.text },
+              ]}>
+              HOME
+            </Text>
+            {activeTab === 'home' && (
+              <View style={[styles.desktopNavUnderline, { backgroundColor: colors.primary }]} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.desktopNavItem, activeTab === 'categories' && styles.desktopNavItemActive]}
+            onPress={() => onSelectTab('categories')}
+            activeOpacity={0.8}>
+            <Text
+              style={[
+                styles.desktopNavText,
+                { color: activeTab === 'categories' ? colors.primary : colors.text },
+              ]}>
+              CATEGORIES
+            </Text>
+            {activeTab === 'categories' && (
+              <View style={[styles.desktopNavUnderline, { backgroundColor: colors.primary }]} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.desktopNavItem, activeTab === 'wishlist' && styles.desktopNavItemActive]}
+            onPress={() => onSelectTab('wishlist')}
+            activeOpacity={0.8}>
+            <Text
+              style={[
+                styles.desktopNavText,
+                { color: activeTab === 'wishlist' ? colors.primary : colors.text },
+              ]}>
+              WISHLIST
+            </Text>
+            {wishlistCount > 0 && (
+              <View style={styles.desktopNavBadge}>
+                <Text style={styles.desktopNavBadgeText}>{wishlistCount}</Text>
+              </View>
+            )}
+            {activeTab === 'wishlist' && (
+              <View style={[styles.desktopNavUnderline, { backgroundColor: colors.primary }]} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.desktopNavItem, activeTab === 'profile' && styles.desktopNavItemActive]}
+            onPress={() => onSelectTab('profile')}
+            activeOpacity={0.8}>
+            <Text
+              style={[
+                styles.desktopNavText,
+                { color: activeTab === 'profile' ? colors.primary : colors.text },
+              ]}>
+              {isAuthenticated && userName ? userName.split(' ')[0].toUpperCase() : 'PROFILE'}
+            </Text>
+            {activeTab === 'profile' && (
+              <View style={[styles.desktopNavUnderline, { backgroundColor: colors.primary }]} />
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Header Actions */}
       <View style={styles.actionsRow}>
@@ -66,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
             style={styles.iconButton}
             onPress={onPressSearch}
             activeOpacity={0.7}>
-            <Ionicons name="search-outline" size={21} color={MyntraColors.text} />
+            <Ionicons name="search-outline" size={21} color={colors.text} />
           </TouchableOpacity>
         )}
 
@@ -83,9 +191,27 @@ export const Header: React.FC<HeaderProps> = ({
               </Text>
             </View>
           ) : (
-            <Ionicons name="person-outline" size={21} color={MyntraColors.text} />
+            <Ionicons name="person-outline" size={21} color={colors.text} />
           )}
         </TouchableOpacity>
+
+        {/* Notifications Bell Button with Unread Badge */}
+        {onPressNotifications && (
+          <TouchableOpacity
+            accessibilityLabel="Notifications"
+            style={styles.iconButton}
+            onPress={onPressNotifications}
+            activeOpacity={0.7}>
+            <Ionicons name="notifications-outline" size={22} color={colors.text} />
+            {notificationCount > 0 && (
+              <View style={[styles.badge, styles.notifBadge]}>
+                <Text style={styles.badgeText}>
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Wishlist Button with Badge */}
         <TouchableOpacity
@@ -93,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
           style={styles.iconButton}
           onPress={onPressWishlist}
           activeOpacity={0.7}>
-          <Ionicons name="heart-outline" size={22} color={MyntraColors.text} />
+          <Ionicons name="heart-outline" size={22} color={colors.text} />
           {wishlistCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>
@@ -109,7 +235,7 @@ export const Header: React.FC<HeaderProps> = ({
           style={[styles.iconButton, styles.bagIconButton]}
           onPress={onPressBag}
           activeOpacity={0.7}>
-          <Ionicons name="bag-handle-outline" size={21} color={MyntraColors.text} />
+          <Ionicons name="bag-handle-outline" size={22} color={colors.text} />
           {bagCount > 0 && (
             <View style={[styles.badge, styles.bagBadge]}>
               <Text style={styles.badgeText}>
@@ -234,9 +360,52 @@ const styles = StyleSheet.create({
   bagBadge: {
     backgroundColor: '#ff3f6c',
   },
+  notifBadge: {
+    backgroundColor: '#ff3f6c',
+  },
   badgeText: {
     color: MyntraColors.white,
     fontSize: 9,
     fontWeight: '700',
+  },
+  desktopNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 32,
+    marginHorizontal: 24,
+  },
+  desktopNavItem: {
+    paddingVertical: 20,
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  desktopNavItemActive: {},
+  desktopNavText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  desktopNavUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+  },
+  desktopNavBadge: {
+    backgroundColor: '#ff3f6c',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    marginLeft: 3,
+  },
+  desktopNavBadgeText: {
+    color: '#ffffff',
+    fontSize: 9.5,
+    fontWeight: '800',
   },
 });

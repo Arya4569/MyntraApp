@@ -7,12 +7,15 @@ import React, {
 } from 'react';
 
 import { authService } from '@/services/auth-service';
+import { pushNotificationService } from '@/services/push-notification-service';
+import { storeService } from '@/services/store-service';
 import {
   LoginPayload,
   LoginResult,
   RegisterPayload,
   RegisterResult,
   SendOtpResult,
+  ThemeMode,
   User,
   VerifyOtpResult,
 } from '@/types/auth';
@@ -40,6 +43,7 @@ interface AuthContextType {
   loginWithBackend: (payload: LoginPayload) => Promise<LoginResult>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<boolean>;
+  updateThemePreference: (theme: ThemeMode) => Promise<boolean>;
   refreshUser: () => Promise<void>;
 }
 
@@ -75,20 +79,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const sessionUser = await authService.getSession();
         const sessionToken = await authService.getToken();
 
-        if (sessionUser && isMounted) {
-          setUser(sessionUser);
-          setToken(sessionToken);
+        // If the stored session is the dev demo user ('usr-demo-1'), clean it up so the web opens clean as guest
+        if (sessionUser?.id === 'usr-demo-1') {
+          await authService.clearSession();
+          if (isMounted) {
+            setUser(null);
+            setToken(null);
+            setIsLoading(false);
+          }
+          return;
         }
 
-        // Try syncing freshest profile from backend if online
-        if (sessionToken) {
+        // Real user session with active token: verify with backend
+        if (sessionUser && sessionToken) {
           const freshUser = await authService.fetchMe();
           if (freshUser && isMounted) {
             setUser(freshUser);
+            setToken(sessionToken);
+          } else if (isMounted) {
+            // Token rejected (expired or invalid) -> safely reset to unauthenticated guest
+            await authService.clearSession();
+            setUser(null);
+            setToken(null);
           }
+        } else if (isMounted) {
+          // No active valid token -> start as clean unauthenticated guest
+          await authService.clearSession();
+          setUser(null);
+          setToken(null);
         }
       } catch (e) {
         console.warn('Failed to restore auth session:', e);
+        if (isMounted) {
+          setUser(null);
+          setToken(null);
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -182,10 +207,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const logout = useCallback(async (): Promise<void> => {
-    await authService.clearSession();
-    setUser(null);
-    setToken(null);
-  }, []);
+    try {
+      const currentUserId = user?.id;
+      // 1. Unregister and clear push token from device and backend
+      const storedToken = await pushNotificationService.getStoredPushToken();
+      if (storedToken) {
+        await storeService.unregisterDeviceToken(storedToken);
+      }
+      await pushNotificationService.clearStoredPushToken();
+
+      // 2. Clear delivered account notifications from tray and cancel account reminders
+      await pushNotificationService.clearDeliveredNotifications();
+      await pushNotificationService.cancelAccountScheduledNotifications();
+
+      // 3. Clear user local cache (orders, cart, wishlist, addresses, etc.) and session
+      await storeService.clearAccountLocalCache(currentUserId);
+      await authService.clearSession();
+    } catch (e) {
+      console.warn('Error during logout cleanup:', e);
+    } finally {
+      setUser(null);
+      setToken(null);
+    }
+  }, [user]);
 
   const updateUser = useCallback(
     async (updates: Partial<User>): Promise<boolean> => {
@@ -198,6 +242,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       return false;
     },
     [user]
+  );
+
+  const updateThemePreference = useCallback(
+    async (themeMode: ThemeMode): Promise<boolean> => {
+      const success = await authService.updatePreferences({
+        themePreference: themeMode,
+      });
+      if (success) {
+        setUser((prev) =>
+          prev ? { ...prev, themePreference: themeMode } : null
+        );
+      }
+      return success;
+    },
+    []
   );
 
   const refreshUser = useCallback(async (): Promise<void> => {
@@ -227,6 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         loginWithBackend,
         logout,
         updateUser,
+        updateThemePreference,
         refreshUser,
       }}>
       {children}

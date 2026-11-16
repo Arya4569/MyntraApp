@@ -139,6 +139,115 @@ class Product {
       .filter((p) => p.isDealOfDay || p.discountPercent >= 50)
       .slice(0, limit);
   }
+
+  static updatePrice(id, newPrice) {
+    const data = db.read();
+    const products = data.products || [];
+    const index = products.findIndex((p) => p.id === id);
+    if (index === -1) return null;
+
+    const oldPrice = products[index].price;
+    const numericNewPrice = Number(newPrice);
+    if (isNaN(numericNewPrice) || numericNewPrice <= 0) {
+      throw new Error('Valid new price is required.');
+    }
+
+    const updated = {
+      ...products[index],
+      price: numericNewPrice,
+      discountPercent: products[index].originalPrice
+        ? Math.round(((products[index].originalPrice - numericNewPrice) / products[index].originalPrice) * 100)
+        : products[index].discountPercent,
+      updatedAt: new Date().toISOString(),
+    };
+
+    products[index] = updated;
+    data.products = products;
+    db.write(data);
+
+    return { product: updated, oldPrice, newPrice: numericNewPrice };
+  }
+
+  static updateStock(id, inStock, stockCount = 10) {
+    const data = db.read();
+    const products = data.products || [];
+    const index = products.findIndex((p) => p.id === id);
+    if (index === -1) return null;
+
+    const wasInStock = products[index].inStock !== false;
+    const updated = {
+      ...products[index],
+      inStock: Boolean(inStock),
+      stockCount: Boolean(inStock) ? Number(stockCount) || 10 : 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    products[index] = updated;
+    data.products = products;
+    db.write(data);
+
+    return { product: updated, wasInStock, isInStock: Boolean(inStock) };
+  }
+
+  static decrementStock(id, quantity = 1) {
+    const data = db.read();
+    const products = data.products || [];
+    const index = products.findIndex((p) => p.id === id);
+    if (index === -1) {
+      return { success: false, error: `Product not found: ${id}` };
+    }
+
+    const currentProduct = products[index];
+    const currentStock = Number(currentProduct.stockCount || 0);
+    const qty = Math.max(1, Number(quantity) || 1);
+
+    if (currentProduct.inStock === false || currentStock < qty) {
+      return {
+        success: false,
+        error: `Insufficient stock for product ${currentProduct.name}. Available: ${currentStock}, Requested: ${qty}`,
+        availableStock: currentStock,
+      };
+    }
+
+    const newStock = currentStock - qty;
+    const updated = {
+      ...currentProduct,
+      stockCount: newStock,
+      inStock: newStock > 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    products[index] = updated;
+    data.products = products;
+    db.write(data);
+
+    return { success: true, product: updated, remainingStock: newStock };
+  }
+
+  static restoreStock(id, quantity = 1) {
+    const data = db.read();
+    const products = data.products || [];
+    const index = products.findIndex((p) => p.id === id);
+    if (index === -1) return null;
+
+    const currentProduct = products[index];
+    const currentStock = Number(currentProduct.stockCount || 0);
+    const qty = Math.max(1, Number(quantity) || 1);
+    const newStock = currentStock + qty;
+
+    const updated = {
+      ...currentProduct,
+      stockCount: newStock,
+      inStock: true,
+      updatedAt: new Date().toISOString(),
+    };
+
+    products[index] = updated;
+    data.products = products;
+    db.write(data);
+
+    return { success: true, product: updated, restoredStock: newStock };
+  }
 }
 
 module.exports = Product;

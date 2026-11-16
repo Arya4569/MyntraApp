@@ -1,3 +1,10 @@
+export type ThemeMode = 'system' | 'light' | 'dark';
+export type ResolvedTheme = 'light' | 'dark';
+
+export interface UserPreferences {
+  themePreference: ThemeMode;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -9,6 +16,7 @@ export interface User {
   role?: 'customer' | 'admin';
   status?: 'active' | 'suspended';
   profileImage?: string | null;
+  themePreference?: ThemeMode;
   createdAt: string;
   updatedAt?: string;
   insiderPoints: number;
@@ -24,8 +32,11 @@ export interface SendOtpResult {
   success: boolean;
   isExistingUser: boolean;
   error?: string;
-  devOtp?: string; // Visible in development mode when real SMS gateway is not configured
+  devOtp?: string; // Visible in development mode when real SMS/email gateway is not configured
   cooldownSeconds?: number;
+  deliveryType?: string;
+  target?: string;
+  isLiveDelivery?: boolean;
 }
 
 export interface VerifyOtpResult {

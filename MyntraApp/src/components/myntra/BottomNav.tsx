@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MyntraColors } from '@/constants/myntra-theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export type TabKey = 'home' | 'categories' | 'wishlist' | 'profile';
 
@@ -28,6 +29,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   bagCount = 0,
   onPressBag,
 }) => {
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 14 : 6);
 
@@ -82,12 +84,20 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <View style={[styles.outerContainer, { paddingBottom: bottomPadding }]}>
+    <View
+      style={[
+        styles.outerContainer,
+        {
+          paddingBottom: bottomPadding,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.divider,
+        },
+      ]}>
       <View style={styles.navRow}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           const iconName = isActive ? tab.activeIcon : tab.icon;
-          const color = isActive ? MyntraColors.primary : MyntraColors.textSecondary;
+          const color = isActive ? colors.primary : colors.textSecondary;
 
           return (
             <TouchableOpacity
@@ -115,7 +125,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 ) : null}
               </View>
 
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color },
+                  isActive && styles.tabLabelActive,
+                ]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
@@ -141,7 +156,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     zIndex: 100,
-    maxWidth: Platform.OS === 'web' ? 480 : undefined,
+    maxWidth: Platform.OS === 'web' ? 1240 : undefined,
     alignSelf: 'center',
     width: '100%',
   },

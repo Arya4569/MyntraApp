@@ -10,6 +10,7 @@ import {
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { Product } from '@/data/mock-data';
+import { useTheme } from '@/hooks/use-theme';
 
 interface ProductCardProps {
   product: Product;
@@ -24,13 +25,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onToggleWishlist,
   onPressCard,
 }) => {
+  const { colors, isDark } = useTheme();
+
   return (
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={() => onPressCard(product)}
-      style={styles.cardContainer}>
+      style={[
+        styles.cardContainer,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.cardBorder,
+        },
+      ]}>
       {/* Product Image Section with 3:4 Fashion Ratio */}
-      <View style={styles.imageContainer}>
+      <View
+        style={[
+          styles.imageContainer,
+          { backgroundColor: colors.surfaceSecondary },
+        ]}>
         <Image
           source={{ uri: product.image }}
           style={styles.image}
@@ -38,11 +51,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         />
 
         {/* Rating Pill Overlay */}
-        <View style={styles.ratingBadge}>
-          <Text style={styles.ratingText}>{product.rating.toFixed(1)}</Text>
-          <Ionicons name="star" size={9} color={MyntraColors.ratingGreen} />
-          <Text style={styles.ratingDivider}>|</Text>
-          <Text style={styles.ratingCountText}>{product.ratingCount}</Text>
+        <View
+          style={[
+            styles.ratingBadge,
+            {
+              backgroundColor: isDark
+                ? 'rgba(30, 31, 36, 0.92)'
+                : 'rgba(255, 255, 255, 0.92)',
+              borderColor: colors.cardBorder,
+              borderWidth: isDark ? 1 : 0,
+            },
+          ]}>
+          <Text style={[styles.ratingText, { color: colors.text }]}>
+            {product.rating.toFixed(1)}
+          </Text>
+          <Ionicons name="star" size={9} color={colors.ratingGreen} />
+          <Text style={[styles.ratingDivider, { color: colors.textMuted }]}>|</Text>
+          <Text style={[styles.ratingCountText, { color: colors.textSecondary }]}>
+            {product.ratingCount}
+          </Text>
         </View>
 
         {/* Wishlist Heart Icon Button */}
@@ -52,12 +79,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           onPress={() => onToggleWishlist(product)}
           style={[
             styles.wishlistButton,
+            {
+              backgroundColor: isDark
+                ? colors.surfaceElevated
+                : 'rgba(255, 255, 255, 0.9)',
+            },
             isWishlisted && styles.wishlistButtonActive,
           ]}>
           <Ionicons
             name={isWishlisted ? 'heart' : 'heart-outline'}
             size={18}
-            color={isWishlisted ? MyntraColors.primary : MyntraColors.textSecondary}
+            color={isWishlisted ? colors.primary : colors.textSecondary}
           />
         </TouchableOpacity>
       </View>
@@ -65,20 +97,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Product Details Section */}
       <View style={styles.detailsContainer}>
         {/* Brand Name */}
-        <Text style={styles.brandName} numberOfLines={1}>
+        <Text style={[styles.brandName, { color: colors.text }]} numberOfLines={1}>
           {product.brand}
         </Text>
 
         {/* Product Title */}
-        <Text style={styles.productName} numberOfLines={1}>
+        <Text
+          style={[styles.productName, { color: colors.textSecondary }]}
+          numberOfLines={1}>
           {product.name}
         </Text>
 
         {/* Price Row: Current, Original, and Discount */}
         <View style={styles.priceRow}>
-          <Text style={styles.currentPrice}>₹{product.price}</Text>
+          <Text style={[styles.currentPrice, { color: colors.text }]}>
+            ₹{product.price}
+          </Text>
           {product.originalPrice > product.price && (
-            <Text style={styles.originalPrice}>₹{product.originalPrice}</Text>
+            <Text style={[styles.originalPrice, { color: colors.textMuted }]}>
+              ₹{product.originalPrice}
+            </Text>
           )}
           {product.discountPercent > 0 && (
             <Text style={styles.discountText}>
@@ -89,8 +127,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Fast Delivery Badge */}
         <View style={styles.deliveryRow}>
-          <Ionicons name="flash-outline" size={10} color={MyntraColors.accent} />
-          <Text style={styles.deliveryText} numberOfLines={1}>
+          <Ionicons name="flash-outline" size={10} color={colors.accent} />
+          <Text
+            style={[styles.deliveryText, { color: colors.textSecondary }]}
+            numberOfLines={1}>
             {product.deliveryTime}
           </Text>
         </View>

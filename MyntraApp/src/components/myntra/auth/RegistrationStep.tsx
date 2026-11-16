@@ -34,7 +34,7 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
   onOpenPrivacy,
 }) => {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(mobile && mobile.includes('@') ? mobile : '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,6 +48,8 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
     password: false,
     confirmPassword: false,
   });
+
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const isNameValid = name.trim().length >= 2;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -104,11 +106,15 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
         </Text>
       </View>
 
-      {/* Verified Mobile Number Pill */}
+      {/* Verified Destination Pill */}
       <View style={styles.verifiedRow}>
         <View style={styles.verifiedLeft}>
-          <Text style={styles.fieldLabel}>Mobile Number</Text>
-          <Text style={styles.verifiedMobileText}>+91 {mobile}</Text>
+          <Text style={styles.fieldLabel}>
+            {mobile && mobile.includes('@') ? 'Verified Email' : 'Mobile Number'}
+          </Text>
+          <Text style={styles.verifiedMobileText}>
+            {mobile && mobile.includes('@') ? mobile : `+91 ${mobile}`}
+          </Text>
         </View>
         <View style={styles.verifiedBadge}>
           <Ionicons
@@ -128,13 +134,18 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
         <TextInput
           style={[
             styles.input,
+            focusedField === 'name' && styles.inputFocused,
             touched.name && !isNameValid ? styles.inputError : null,
           ]}
           placeholder="e.g. Rahul Sharma"
           placeholderTextColor={MyntraColors.textMuted}
           value={name}
           onChangeText={setName}
-          onBlur={() => setTouched((p) => ({ ...p, name: true }))}
+          onFocus={() => setFocusedField('name')}
+          onBlur={() => {
+            setFocusedField(null);
+            setTouched((p) => ({ ...p, name: true }));
+          }}
           autoCapitalize="words"
         />
         {touched.name && !isNameValid && (
@@ -152,6 +163,7 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
         <TextInput
           style={[
             styles.input,
+            focusedField === 'email' && styles.inputFocused,
             touched.email && !isEmailValid ? styles.inputError : null,
           ]}
           placeholder="e.g. rahul.sharma@example.com"
@@ -160,7 +172,11 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
           autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
-          onBlur={() => setTouched((p) => ({ ...p, email: true }))}
+          onFocus={() => setFocusedField('email')}
+          onBlur={() => {
+            setFocusedField(null);
+            setTouched((p) => ({ ...p, email: true }));
+          }}
         />
         {touched.email && !isEmailValid && (
           <Text style={styles.fieldErrorText}>
@@ -177,6 +193,7 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
         <View
           style={[
             styles.passwordRow,
+            focusedField === 'password' && styles.inputFocused,
             touched.password && !isPasswordValid && styles.inputError,
           ]}>
           <TextInput
@@ -186,7 +203,11 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
-            onBlur={() => setTouched((p) => ({ ...p, password: true }))}
+            onFocus={() => setFocusedField('password')}
+            onBlur={() => {
+              setFocusedField(null);
+              setTouched((p) => ({ ...p, password: true }));
+            }}
             autoCapitalize="none"
           />
           <TouchableOpacity
@@ -239,6 +260,7 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
         <View
           style={[
             styles.passwordRow,
+            focusedField === 'confirmPassword' && styles.inputFocused,
             touched.confirmPassword && !isConfirmValid && styles.inputError,
           ]}>
           <TextInput
@@ -248,7 +270,11 @@ export const RegistrationStep: React.FC<RegistrationStepProps> = ({
             secureTextEntry={!showConfirmPassword}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            onBlur={() => setTouched((p) => ({ ...p, confirmPassword: true }))}
+            onFocus={() => setFocusedField('confirmPassword')}
+            onBlur={() => {
+              setFocusedField(null);
+              setTouched((p) => ({ ...p, confirmPassword: true }));
+            }}
             autoCapitalize="none"
           />
           <TouchableOpacity
@@ -421,13 +447,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   inputGroup: {
-    marginBottom: Spacing.md,
+    marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: MyntraColors.text,
-    marginBottom: 6,
+    marginBottom: 7,
   },
   requiredStar: {
     color: MyntraColors.primary,
@@ -441,6 +467,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: MyntraColors.text,
     backgroundColor: '#fafafa',
+    outlineStyle: 'none' as any,
+  },
+  inputFocused: {
+    borderColor: '#282c3f',
+    backgroundColor: '#ffffff',
   },
   passwordRow: {
     height: 48,
@@ -450,20 +481,27 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 8,
     backgroundColor: '#fafafa',
-    paddingHorizontal: 12,
+    paddingLeft: 14,
+    paddingRight: 6,
   },
   passwordInput: {
     flex: 1,
     height: '100%',
     fontSize: 14,
     color: MyntraColors.text,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    outlineStyle: 'none' as any,
   },
   eyeBtn: {
-    padding: 6,
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   strengthContainer: {
-    marginTop: 6,
-    gap: 4,
+    marginTop: 8,
+    marginBottom: 2,
+    gap: 5,
   },
   strengthBarBackground: {
     height: 4,

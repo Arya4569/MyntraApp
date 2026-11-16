@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -18,15 +18,20 @@ import { CheckoutModal } from './CheckoutModal';
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { useAuth } from '@/context/AuthContext';
 import { AVAILABLE_COUPONS, Product, PRODUCTS } from '@/data/mock-data';
+import { useTheme } from '@/hooks/use-theme';
 import { storeService } from '@/services/store-service';
 import { CartItem, Coupon, DeliveryAddress, Order } from '@/types/store';
 
 interface ShoppingBagModalProps {
   visible: boolean;
   cartItems: CartItem[];
+  savedForLaterItems?: CartItem[];
   onClose: () => void;
   onUpdateQuantity: (cartItemId: string, newQty: number) => Promise<void>;
   onRemoveItem: (cartItemId: string) => Promise<void>;
+  onSaveForLater?: (cartItemId: string) => Promise<void>;
+  onMoveSavedToBag?: (savedItemId: string) => Promise<void>;
+  onRemoveSavedItem?: (savedItemId: string) => Promise<void>;
   onOrderPlaced: (order: Order) => void;
   onOpenAuth: () => void;
   onStartShopping?: () => void;
@@ -37,14 +42,19 @@ interface ShoppingBagModalProps {
   onAddToCart?: (product: Product, size: string, color?: string) => Promise<void>;
   onGoToOrders?: () => void;
   allProducts?: Product[];
+  onRefreshBag?: () => Promise<void>;
 }
 
 export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
   visible,
   cartItems,
+  savedForLaterItems = [],
   onClose,
   onUpdateQuantity,
   onRemoveItem,
+  onSaveForLater,
+  onMoveSavedToBag,
+  onRemoveSavedItem,
   onOrderPlaced,
   onOpenAuth,
   onStartShopping,
@@ -55,8 +65,11 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
   onAddToCart,
   onGoToOrders,
   allProducts = PRODUCTS,
+  onRefreshBag,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   // 1. Coupon State
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>(AVAILABLE_COUPONS);
@@ -122,6 +135,8 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
             setSelectedAddress(def);
             setDeliveryPincode(def.pincode);
             setDeliveryCity(def.city);
+          } else {
+            setSelectedAddress(null);
           }
         }
       });
@@ -129,7 +144,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [visible]);
+  }, [visible, user?.id]);
 
   // Price Calculations (Derived strictly from cart data)
   const totalMRP = cartItems.reduce(
@@ -211,6 +226,9 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
     setCouponMessage(null);
   };
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isValidatingCheckout, setIsValidatingCheckout] = useState(false);
+
   // Stepper handlers
   const handleDecrement = (item: CartItem) => {
     if (item.quantity === 1) {
@@ -221,9 +239,12 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
   };
 
   const handleIncrement = (item: CartItem) => {
-    const maxStock = item.product.stockCount || 10;
+    const maxStock = item.availableStock ?? item.product.stockCount ?? 10;
     if (item.quantity >= maxStock) {
-      Alert.alert('Stock Limit Reached', `Only ${maxStock} units available for this style.`);
+      Alert.alert(
+        'Stock Limit Reached',
+        `Only ${maxStock} unit(s) available in stock for "${item.product.name}".`
+      );
       return;
     }
     onUpdateQuantity(item.id, item.quantity + 1);
@@ -283,11 +304,54 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
     }
   };
 
-  const handleProceedToCheckout = () => {
+  const handleProceedToCheckout = async () => {
     if (!isAuthenticated) {
       onOpenAuth();
       return;
     }
+
+    setIsValidatingCheckout(true);
+    try {
+      const validation = await storeService.validateCart();
+      if (!validation.valid) {
+        const outOfStockIssue = validation.issues.find(
+          (i) => i.type === 'OUT_OF_STOCK' || i.type === 'DISCONTINUED'
+        );
+        if (outOfStockIssue) {
+          Alert.alert(
+            'Item Unavailable',
+            `${outOfStockIssue.message}\nPlease remove or save this item for later before proceeding.`
+          );
+          setIsValidatingCheckout(false);
+          return;
+        }
+
+        const stockExceeded = validation.issues.find((i) => i.type === 'STOCK_EXCEEDED');
+        if (stockExceeded) {
+          Alert.alert(
+            'Stock Limit Exceeded',
+            `${stockExceeded.message}\nPlease update item quantity before proceeding.`
+          );
+          setIsValidatingCheckout(false);
+          return;
+        }
+      }
+
+      if (validation.hasPriceChanges) {
+        const priceIssue = validation.issues.find((i) => i.type === 'PRICE_CHANGED');
+        Alert.alert(
+          'Price Updated',
+          priceIssue
+            ? priceIssue.message
+            : 'Item prices have been refreshed with latest catalog prices.'
+        );
+      }
+    } catch (e) {
+      console.warn('Checkout validation notice:', e);
+    } finally {
+      setIsValidatingCheckout(false);
+    }
+
     setShowCheckout(true);
   };
 
@@ -326,6 +390,26 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
             </View>
 
             <View style={styles.headerRight}>
+              {onRefreshBag && !confirmedOrder && (
+                <TouchableOpacity
+                  onPress={async () => {
+                    setIsRefreshing(true);
+                    try {
+                      await onRefreshBag();
+                    } finally {
+                      setIsRefreshing(false);
+                    }
+                  }}
+                  style={styles.headerActionBtn}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Refresh shopping bag">
+                  <Ionicons
+                    name="sync-outline"
+                    size={20}
+                    color={isRefreshing ? MyntraColors.primary : MyntraColors.textMuted}
+                  />
+                </TouchableOpacity>
+              )}
               {cartItems.length > 0 && !confirmedOrder && onClearBag && (
                 <TouchableOpacity
                   onPress={() => setShowClearConfirm(true)}
@@ -345,8 +429,8 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
             </View>
           </View>
 
-          {/* 2. Empty Bag Experience */}
-          {cartItems.length === 0 && !confirmedOrder && (
+          {/* 2. Empty Bag Experience (when both cart and saved items are empty) */}
+          {cartItems.length === 0 && savedForLaterItems.length === 0 && !confirmedOrder && (
             <ScrollView
               style={styles.emptyScroll}
               contentContainerStyle={styles.emptyContainer}
@@ -481,12 +565,25 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
             </View>
           )}
 
-          {/* 4. Active Cart View */}
-          {cartItems.length > 0 && !confirmedOrder && (
+          {/* 4. Active Cart & Save for Later Experience */}
+          {(cartItems.length > 0 || savedForLaterItems.length > 0) && !confirmedOrder && (
             <>
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}>
+                {/* Notice when active cart is empty but saved items exist */}
+                {cartItems.length === 0 && (
+                  <View style={styles.emptyCartWithSavedCard}>
+                    <Ionicons name="bag-outline" size={32} color={MyntraColors.textMuted} />
+                    <Text style={styles.emptyCartWithSavedTitle}>Your Active Bag is Empty</Text>
+                    <Text style={styles.emptyCartWithSavedSub}>
+                      You have {savedForLaterItems.length} item{savedForLaterItems.length === 1 ? '' : 's'} in your Save for Later list below. Move items to your bag when you are ready to checkout.
+                    </Text>
+                  </View>
+                )}
+
+                {cartItems.length > 0 && (
+                  <>
                 {/* Delivery Address / PIN Code Strip */}
                 <View style={styles.deliveryBanner}>
                   <View style={styles.deliveryBannerLeft}>
@@ -625,19 +722,48 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                               <Text style={styles.stepperQty}>{item.quantity}</Text>
                               <TouchableOpacity
                                 onPress={() => handleIncrement(item)}
-                                style={styles.stepperBtn}
+                                disabled={
+                                  (item.availableStock !== undefined
+                                    ? item.availableStock
+                                    : item.product.stockCount ?? 10) <= item.quantity
+                                }
+                                style={[
+                                  styles.stepperBtn,
+                                  (item.availableStock !== undefined
+                                    ? item.availableStock
+                                    : item.product.stockCount ?? 10) <= item.quantity &&
+                                    styles.stepperBtnDisabled,
+                                ]}
                                 activeOpacity={0.7}
                                 accessibilityLabel="Increase quantity">
-                                <Ionicons name="add" size={14} color={MyntraColors.text} />
+                                <Ionicons
+                                  name="add"
+                                  size={14}
+                                  color={
+                                    (item.availableStock !== undefined
+                                      ? item.availableStock
+                                      : item.product.stockCount ?? 10) <= item.quantity
+                                      ? MyntraColors.textMuted
+                                      : MyntraColors.text
+                                  }
+                                />
                               </TouchableOpacity>
                             </View>
                           </View>
 
                           {/* Stock & Delivery Reassurance */}
                           <View style={styles.assuranceRow}>
-                            {item.product.stockCount && item.product.stockCount < 5 ? (
+                            {item.isOutOfStock ? (
+                              <Text style={styles.outOfStockBadge}>⚠️ Out of Stock</Text>
+                            ) : (item.availableStock !== undefined
+                                ? item.availableStock
+                                : item.product.stockCount ?? 10) <= 3 ? (
                               <Text style={styles.lowStockText}>
-                                Only {item.product.stockCount} left in stock!
+                                🔥 Only{' '}
+                                {item.availableStock !== undefined
+                                  ? item.availableStock
+                                  : item.product.stockCount ?? 10}{' '}
+                                left in stock!
                               </Text>
                             ) : (
                               <Text style={styles.inStockText}>✓ In Stock</Text>
@@ -646,8 +772,26 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                             <Text style={styles.returnText}>14 Days Returnable</Text>
                           </View>
 
-                          {/* Move to Wishlist Action Button */}
+                          {/* Move to Wishlist & Save for Later Action Buttons */}
                           <View style={styles.itemActionsBottomRow}>
+                            <TouchableOpacity
+                              onPress={async () => {
+                                if (onSaveForLater) {
+                                  await onSaveForLater(item.id);
+                                }
+                              }}
+                              style={styles.saveForLaterBtn}
+                              activeOpacity={0.75}>
+                              <Ionicons
+                                name="bookmark-outline"
+                                size={14}
+                                color={MyntraColors.textSecondary}
+                              />
+                              <Text style={styles.saveForLaterText}>SAVE FOR LATER</Text>
+                            </TouchableOpacity>
+
+                            <View style={styles.actionDivider} />
+
                             <TouchableOpacity
                               onPress={async () => {
                                 if (onMoveToWishlist) {
@@ -826,6 +970,185 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                     </View>
                   )}
                 </View>
+                  </>
+                )}
+
+                {/* Save For Later Section */}
+                {savedForLaterItems.length > 0 && (
+                  <View style={styles.savedSectionContainer}>
+                    <View style={styles.savedHeaderRow}>
+                      <View style={styles.savedHeaderLeft}>
+                        <Ionicons name="bookmark" size={15} color={MyntraColors.primary} />
+                        <Text style={styles.savedSectionTitle}>
+                          SAVED FOR LATER ({savedForLaterItems.length})
+                        </Text>
+                      </View>
+                      <Text style={styles.savedNoticeText}>NOT INCLUDED IN CHECKOUT</Text>
+                    </View>
+                    <Text style={styles.savedSubtitle}>
+                      Items moved here are preserved and will not be charged unless restored to your bag.
+                    </Text>
+
+                    {savedForLaterItems.map((sItem) => {
+                      const isOOS =
+                        sItem.isOutOfStock ||
+                        (sItem.availableStock !== undefined && sItem.availableStock <= 0) ||
+                        (sItem.product.stockCount !== undefined && sItem.product.stockCount <= 0);
+                      const isUnavailable = sItem.isAvailable === false;
+                      const hasPriceChange = sItem.priceChanged && sItem.savedPrice !== undefined;
+                      const priceDiff = sItem.priceDiff || 0;
+
+                      return (
+                        <View key={`saved-${sItem.id}`} style={styles.savedItemCard}>
+                          {/* Left image column */}
+                          <TouchableOpacity
+                            style={styles.savedImageCol}
+                            activeOpacity={0.88}
+                            onPress={() => {
+                              onClose();
+                              onPressProduct?.(sItem.product);
+                            }}>
+                            <Image
+                              source={{ uri: sItem.product.image }}
+                              style={styles.savedItemImage}
+                              resizeMode="cover"
+                            />
+                            {(isOOS || isUnavailable) && (
+                              <View style={styles.outOfStockOverlay}>
+                                <Text style={styles.outOfStockOverlayText}>
+                                  {isUnavailable ? 'UNAVAILABLE' : 'OUT OF STOCK'}
+                                </Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+
+                          {/* Right product details */}
+                          <View style={styles.savedItemInfo}>
+                            <View>
+                              <View style={styles.savedItemTopRow}>
+                                <Text style={styles.savedItemBrand} numberOfLines={1}>
+                                  {sItem.product.brand}
+                                </Text>
+                                <TouchableOpacity
+                                  onPress={() => onRemoveSavedItem?.(sItem.id)}
+                                  style={styles.removeSavedCrossBtn}
+                                  activeOpacity={0.7}
+                                  accessibilityLabel="Remove saved item">
+                                  <Ionicons name="close" size={16} color={MyntraColors.textMuted} />
+                                </TouchableOpacity>
+                              </View>
+
+                              <Text style={styles.savedItemName} numberOfLines={1}>
+                                {sItem.product.name}
+                              </Text>
+
+                              <View style={styles.savedVariantRow}>
+                                <View style={styles.savedVariantBadge}>
+                                  <Text style={styles.savedVariantBadgeText}>Size: {sItem.size}</Text>
+                                </View>
+                                {sItem.color && (
+                                  <View style={styles.savedVariantBadge}>
+                                    <Text style={styles.savedVariantBadgeText}>{sItem.color}</Text>
+                                  </View>
+                                )}
+                              </View>
+
+                              <View style={styles.savedPriceRow}>
+                                <Text style={styles.savedPrice}>₹{sItem.product.price}</Text>
+                                {sItem.product.originalPrice > sItem.product.price && (
+                                  <Text style={styles.savedOriginalPrice}>
+                                    ₹{sItem.product.originalPrice}
+                                  </Text>
+                                )}
+                                {sItem.product.discountPercent > 0 && (
+                                  <Text style={styles.savedDiscountText}>
+                                    {sItem.product.discountPercent}% OFF
+                                  </Text>
+                                )}
+                              </View>
+
+                              {hasPriceChange && (
+                                <View style={styles.priceDropPill}>
+                                  <Ionicons
+                                    name={priceDiff > 0 ? 'arrow-up' : 'arrow-down'}
+                                    size={10}
+                                    color={priceDiff > 0 ? '#d9534f' : '#03a685'}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.priceDropPillText,
+                                      priceDiff > 0 && { color: '#d9534f' },
+                                    ]}>
+                                    {priceDiff > 0
+                                      ? `Price increased by ₹${priceDiff}`
+                                      : `Price dropped by ₹${Math.abs(priceDiff)}!`}
+                                  </Text>
+                                </View>
+                              )}
+
+                              {isUnavailable ? (
+                                <Text style={styles.savedStatusOutOfStock}>
+                                  ⚠️ Discontinued or unavailable
+                                </Text>
+                              ) : isOOS ? (
+                                <Text style={styles.savedStatusOutOfStock}>
+                                  ⚠️ Currently Out of Stock
+                                </Text>
+                              ) : (
+                                <Text style={styles.savedStatusInStock}>✓ In Stock</Text>
+                              )}
+                            </View>
+
+                            {/* Action Buttons */}
+                            <View style={styles.savedActionsRow}>
+                              <TouchableOpacity
+                                onPress={() => onRemoveSavedItem?.(sItem.id)}
+                                style={styles.savedRemoveBtn}
+                                activeOpacity={0.7}>
+                                <Text style={styles.savedRemoveBtnText}>REMOVE</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                onPress={async () => {
+                                  if (isUnavailable || isOOS) {
+                                    Alert.alert(
+                                      'Cannot Move to Bag',
+                                      isUnavailable
+                                        ? 'This product is no longer available in the catalogue.'
+                                        : 'This item is currently out of stock. Please check back later.'
+                                    );
+                                    return;
+                                  }
+                                  if (onMoveSavedToBag) {
+                                    await onMoveSavedToBag(sItem.id);
+                                  }
+                                }}
+                                disabled={isUnavailable || isOOS}
+                                style={[
+                                  styles.savedMoveBtn,
+                                  (isUnavailable || isOOS) && styles.savedMoveBtnDisabled,
+                                ]}
+                                activeOpacity={0.8}>
+                                <Ionicons
+                                  name="bag-add-outline"
+                                  size={13}
+                                  color={isUnavailable || isOOS ? MyntraColors.textMuted : '#fff'}
+                                />
+                                <Text
+                                  style={[
+                                    styles.savedMoveBtnText,
+                                    (isUnavailable || isOOS) && styles.savedMoveBtnTextDisabled,
+                                  ]}>
+                                  MOVE TO BAG
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
 
                 {/* 7. Catalog Carousel below cart items */}
                 {recommendedPicks.length > 0 && (
@@ -858,20 +1181,31 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
               </ScrollView>
 
               {/* 8. Sticky Bottom Action Bar */}
-              <View style={styles.footer}>
-                <View style={styles.footerPriceBlock}>
-                  <Text style={styles.footerTotalLabel}>Total Amount</Text>
-                  <Text style={styles.footerTotalPrice}>₹{finalPayable}</Text>
-                </View>
+              {cartItems.length > 0 ? (
+                <View style={styles.footer}>
+                  <View style={styles.footerPriceBlock}>
+                    <Text style={styles.footerTotalLabel}>Total Amount</Text>
+                    <Text style={styles.footerTotalPrice}>₹{finalPayable}</Text>
+                  </View>
 
-                <TouchableOpacity
-                  onPress={handleProceedToCheckout}
-                  style={styles.checkoutBtn}
-                  activeOpacity={0.85}>
-                  <Text style={styles.checkoutBtnText}>PROCEED TO CHECKOUT</Text>
-                  <Ionicons name="arrow-forward" size={16} color="#fff" />
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity
+                    onPress={handleProceedToCheckout}
+                    style={styles.checkoutBtn}
+                    activeOpacity={0.85}>
+                    <Text style={styles.checkoutBtnText}>PROCEED TO CHECKOUT</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.footer}>
+                  <TouchableOpacity
+                    onPress={onClose}
+                    style={[styles.checkoutBtn, { flex: 1, justifyContent: 'center' }]}
+                    activeOpacity={0.85}>
+                    <Text style={styles.checkoutBtnText}>CONTINUE SHOPPING</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </>
           )}
 
@@ -1073,14 +1407,14 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    backgroundColor: '#fafbfc',
+    backgroundColor: colors.background,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     height: '92%',
@@ -1097,8 +1431,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
-    backgroundColor: MyntraColors.white,
+    borderBottomColor: colors.divider,
+    backgroundColor: colors.surface,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -1111,12 +1445,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.8,
   },
   itemCount: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
     marginTop: 1,
   },
@@ -1132,11 +1466,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   deliveryBannerLeft: {
     flexDirection: 'row',
@@ -1149,14 +1483,14 @@ const styles = StyleSheet.create({
   },
   deliveryToLabel: {
     fontSize: 12,
-    color: MyntraColors.text,
+    color: colors.text,
   },
   deliveryToBold: {
     fontWeight: '800',
   },
   deliveryEstimate: {
     fontSize: 10,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   changeAddressBtn: {
@@ -1166,14 +1500,14 @@ const styles = StyleSheet.create({
   changeAddressText: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   freeDelStrip: {
-    backgroundColor: '#fff7f9',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff7f9',
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ffe5eb',
+    borderBottomColor: isDark ? colors.border : '#ffe5eb',
   },
   freeDelIconRow: {
     flexDirection: 'row',
@@ -1183,18 +1517,18 @@ const styles = StyleSheet.create({
   freeDelText: {
     fontSize: 11,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   progressBarBg: {
     height: 4,
-    backgroundColor: '#ffd1dc',
+    backgroundColor: isDark ? colors.border : '#ffd1dc',
     borderRadius: 2,
     marginTop: 6,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
   },
   scrollContent: {
     paddingBottom: 110,
@@ -1206,11 +1540,11 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     flexDirection: 'row',
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 10,
     borderWidth: 1,
-    borderColor: '#e8e8ec',
+    borderColor: colors.cardBorder,
     gap: 12,
   },
   imageCol: {
@@ -1218,7 +1552,7 @@ const styles = StyleSheet.create({
     height: 115,
     borderRadius: 6,
     overflow: 'hidden',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.surfaceElevated,
   },
   itemImage: {
     width: '100%',
@@ -1236,7 +1570,7 @@ const styles = StyleSheet.create({
   itemBrand: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
@@ -1245,7 +1579,7 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   variantSelectorsRow: {
@@ -1258,28 +1592,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
   },
   variantPickerText: {
     fontSize: 10.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   variantPickerBold: {
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   colorPill: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
   },
   colorPillText: {
     fontSize: 10.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   itemPriceAndQtyRow: {
     flexDirection: 'row',
@@ -1298,11 +1632,11 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontSize: 13.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   itemOriginalPrice: {
     fontSize: 11,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
   itemDiscountText: {
@@ -1315,7 +1649,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
     borderRadius: 6,
     overflow: 'hidden',
   },
@@ -1324,14 +1658,14 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f8fafc',
   },
   stepperQty: {
     minWidth: 26,
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   assuranceRow: {
     flexDirection: 'row',
@@ -1347,20 +1681,20 @@ const styles = StyleSheet.create({
   inStockText: {
     fontSize: 9.5,
     fontWeight: '700',
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
   },
   assuranceDot: {
     fontSize: 9,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
   },
   returnText: {
     fontSize: 9.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
   },
   itemActionsBottomRow: {
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.divider,
     paddingTop: 6,
   },
   moveToWishlistBtn: {
@@ -1371,17 +1705,17 @@ const styles = StyleSheet.create({
   moveToWishlistText: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
     letterSpacing: 0.5,
   },
   couponsCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     marginHorizontal: Spacing.sm,
     marginTop: Spacing.md,
     borderRadius: 8,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#e8e8ec',
+    borderColor: colors.cardBorder,
   },
   couponHeaderRow: {
     flexDirection: 'row',
@@ -1397,19 +1731,19 @@ const styles = StyleSheet.create({
   couponSectionTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   viewCouponsLink: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   couponInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
     borderRadius: 6,
     overflow: 'hidden',
   },
@@ -1418,16 +1752,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontSize: 12,
-    color: MyntraColors.text,
+    color: colors.text,
     fontWeight: '600',
   },
   applyCouponBtn: {
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   applyCouponText: {
-    color: MyntraColors.white,
+    color: '#fff',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -1450,21 +1784,21 @@ const styles = StyleSheet.create({
     color: '#e53935',
   },
   couponFeedbackSuccess: {
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
   },
   availableCouponsList: {
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.divider,
     gap: 8,
   },
   couponOfferCard: {
-    backgroundColor: '#fafbfc',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fafbfc',
     borderRadius: 6,
     padding: 8,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: colors.border,
   },
   couponOfferTop: {
     flexDirection: 'row',
@@ -1472,27 +1806,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   couponBadge: {
-    backgroundColor: '#fff0f3',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#ffd1dc',
+    borderColor: isDark ? colors.border : '#ffd1dc',
   },
   couponBadgeCode: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   appliedStatus: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
   },
   offerApplyBtn: {
     paddingHorizontal: 10,
     paddingVertical: 3,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 4,
   },
   offerApplyBtnDisabled: {
@@ -1506,27 +1840,27 @@ const styles = StyleSheet.create({
   couponOfferTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
     marginTop: 4,
   },
   couponOfferDesc: {
     fontSize: 9.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   priceSummaryCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     marginHorizontal: Spacing.sm,
     marginTop: Spacing.md,
     borderRadius: 8,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#e8e8ec',
+    borderColor: colors.cardBorder,
   },
   priceSummaryTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.8,
     marginBottom: 10,
   },
@@ -1537,20 +1871,20 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   summaryValue: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   summaryDiscount: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
   },
   freeDeliveryLabel: {
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
     fontWeight: '800',
   },
   totalRow: {
@@ -1559,23 +1893,23 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: MyntraColors.divider,
+    borderTopColor: colors.divider,
   },
   totalLabel: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   totalValue: {
     fontSize: 14,
     fontWeight: '900',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   savingsTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#edf7ed',
+    backgroundColor: isDark ? 'rgba(46, 125, 50, 0.2)' : '#edf7ed',
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 4,
@@ -1584,19 +1918,19 @@ const styles = StyleSheet.create({
   savingsTagText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#2e7d32',
+    color: isDark ? '#4ade80' : '#2e7d32',
   },
   bottomRecSection: {
     marginTop: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: MyntraColors.divider,
+    borderTopColor: colors.divider,
   },
   bottomRecTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.8,
     paddingHorizontal: Spacing.md,
     marginBottom: 8,
@@ -1607,16 +1941,16 @@ const styles = StyleSheet.create({
   },
   bottomRecCard: {
     width: 110,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
   },
   bottomRecImage: {
     width: '100%',
     height: 125,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surfaceElevated,
   },
   bottomRecInfo: {
     padding: 6,
@@ -1624,17 +1958,17 @@ const styles = StyleSheet.create({
   bottomRecBrand: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   bottomRecName: {
     fontSize: 9,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   bottomRecPrice: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     marginTop: 2,
   },
   footer: {
@@ -1642,9 +1976,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: MyntraColors.divider,
+    borderTopColor: colors.divider,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -1656,25 +1990,25 @@ const styles = StyleSheet.create({
   },
   footerTotalLabel: {
     fontSize: 10,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   footerTotalPrice: {
     fontSize: 16,
     fontWeight: '900',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   checkoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 22,
     paddingVertical: 13,
     borderRadius: 8,
   },
   checkoutBtnText: {
-    color: MyntraColors.white,
+    color: '#fff',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.6,
@@ -1692,7 +2026,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#fff0f3',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.md,
@@ -1700,12 +2034,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   emptySubtitle: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 18,
@@ -1713,13 +2047,13 @@ const styles = StyleSheet.create({
   },
   startShoppingBtn: {
     marginTop: Spacing.lg,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 26,
     paddingVertical: 12,
     borderRadius: 24,
   },
   startShoppingBtnText: {
-    color: MyntraColors.white,
+    color: '#fff',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.6,
@@ -1729,17 +2063,17 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xl,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: MyntraColors.divider,
+    borderTopColor: colors.divider,
   },
   emptyRecTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   emptyRecSubtitle: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
     marginBottom: 10,
   },
@@ -1751,17 +2085,17 @@ const styles = StyleSheet.create({
   },
   emptyRecCard: {
     width: '48%',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#e8e8ec',
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
     marginBottom: 8,
   },
   emptyRecImage: {
     width: '100%',
     height: 140,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.surfaceElevated,
   },
   emptyRecDetails: {
     padding: 6,
@@ -1769,18 +2103,18 @@ const styles = StyleSheet.create({
   emptyRecBrand: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     textTransform: 'uppercase',
   },
   emptyRecName: {
     fontSize: 10,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   emptyRecPrice: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     marginTop: 2,
   },
   emptyRecAddBtn: {
@@ -1789,14 +2123,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.divider,
     paddingVertical: 7,
-    backgroundColor: '#fff7f9',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff7f9',
   },
   emptyRecAddText: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   confirmedContainer: {
     flex: 1,
@@ -1810,18 +2144,18 @@ const styles = StyleSheet.create({
   confirmedTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   confirmedId: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.primary,
+    color: colors.primary,
     marginTop: 4,
   },
   confirmedSub: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 18,
@@ -1829,16 +2163,16 @@ const styles = StyleSheet.create({
   },
   confirmedDateBold: {
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   orderSummaryCard: {
     width: '100%',
-    backgroundColor: '#f8fafc',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f8fafc',
     borderRadius: 8,
     padding: Spacing.md,
     marginTop: Spacing.lg,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
     gap: 6,
   },
   orderSummaryRow: {
@@ -1847,17 +2181,17 @@ const styles = StyleSheet.create({
   },
   orderSummaryLabel: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   orderSummaryVal: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   orderSummaryTotal: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   confirmedButtonsRow: {
     flexDirection: 'row',
@@ -1871,7 +2205,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 6,
@@ -1883,7 +2217,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   trackOrderBtn: {
-    backgroundColor: '#1f2937',
+    backgroundColor: isDark ? colors.surfaceElevated : '#1f2937',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 6,
@@ -1901,7 +2235,7 @@ const styles = StyleSheet.create({
     bottom: 75,
     left: Spacing.md,
     right: Spacing.md,
-    backgroundColor: '#1e293b',
+    backgroundColor: isDark ? colors.surfaceElevated : '#1e293b',
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -1938,7 +2272,7 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   confirmCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: Spacing.lg,
     width: '100%',
@@ -1948,12 +2282,12 @@ const styles = StyleSheet.create({
   confirmTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     textAlign: 'center',
   },
   confirmSubtitle: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 18,
@@ -1969,13 +2303,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   confirmCancelText: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   confirmRemoveBtn: {
     flex: 1,
@@ -1990,7 +2324,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   variantSheetCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: Spacing.lg,
@@ -2004,12 +2338,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   variantSheetTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   sizePillsRow: {
@@ -2023,26 +2357,26 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
   sizePillSelected: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff0f3',
+    borderColor: colors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
   },
   sizePillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   sizePillTextSelected: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   confirmVariantBtn: {
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 6,
     alignItems: 'center',
@@ -2054,7 +2388,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   addressSheetCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: Spacing.lg,
@@ -2068,12 +2402,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   addressSheetTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   pincodeInputRow: {
     flexDirection: 'row',
@@ -2083,15 +2417,15 @@ const styles = StyleSheet.create({
   pincodeInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 12,
-    color: MyntraColors.text,
+    color: colors.text,
   },
   checkPincodeBtn: {
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     borderRadius: 6,
     alignItems: 'center',
@@ -2105,14 +2439,14 @@ const styles = StyleSheet.create({
   savedAddressesList: {
     marginTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.divider,
     paddingTop: 12,
     gap: 8,
   },
   savedAddrHeading: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.6,
   },
   addrCard: {
@@ -2122,11 +2456,11 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
   },
   addrCardActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff7f9',
+    borderColor: colors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff7f9',
   },
   addrTextCol: {
     flex: 1,
@@ -2134,11 +2468,261 @@ const styles = StyleSheet.create({
   addrName: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   addrLine: {
     fontSize: 10,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
+  },
+  actionDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: colors.divider,
+  },
+  saveForLaterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 2,
+  },
+  saveForLaterText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+  },
+  outOfStockBadge: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#d9534f',
+  },
+  stepperBtnDisabled: {
+    opacity: 0.35,
+  },
+  savedSectionContainer: {
+    backgroundColor: colors.surface,
+    marginHorizontal: Spacing.sm,
+    marginTop: Spacing.md,
+    borderRadius: 8,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  savedHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  savedHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  savedSectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: 0.5,
+  },
+  savedNoticeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  savedSubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginBottom: 12,
+  },
+  savedItemCard: {
+    flexDirection: 'row',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fcfcfd',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 10,
+    marginBottom: 10,
+    gap: 12,
+  },
+  savedImageCol: {
+    width: 80,
+    height: 106,
+    borderRadius: 6,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: colors.border,
+  },
+  savedItemImage: {
+    width: '100%',
+    height: '100%',
+  },
+  outOfStockOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(217, 83, 79, 0.92)',
+    paddingVertical: 3,
+    alignItems: 'center',
+  },
+  outOfStockOverlayText: {
+    color: '#fff',
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  savedItemInfo: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  savedItemTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  savedItemBrand: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: 0.5,
+  },
+  removeSavedCrossBtn: {
+    padding: 2,
+  },
+  savedItemName: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  savedVariantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  savedVariantBadge: {
+    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  savedVariantBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  savedPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  savedPrice: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  savedOriginalPrice: {
+    fontSize: 11,
+    color: colors.textMuted,
+    textDecorationLine: 'line-through',
+  },
+  savedDiscountText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.ratingGreen,
+  },
+  priceDropPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: isDark ? 'rgba(3,166,133,0.15)' : '#e6f7f3',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  priceDropPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#03a685',
+  },
+  savedStatusOutOfStock: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#d9534f',
+    marginTop: 4,
+  },
+  savedStatusInStock: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.ratingGreen,
+    marginTop: 4,
+  },
+  savedActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    paddingTop: 8,
+  },
+  savedRemoveBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  savedRemoveBtnText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+  },
+  savedMoveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  savedMoveBtnDisabled: {
+    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e5ea',
+  },
+  savedMoveBtnText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  savedMoveBtnTextDisabled: {
+    color: colors.textMuted,
+  },
+  emptyCartWithSavedCard: {
+    backgroundColor: colors.surface,
+    marginHorizontal: Spacing.sm,
+    marginTop: Spacing.sm,
+    borderRadius: 8,
+    padding: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  emptyCartWithSavedTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: 6,
+  },
+  emptyCartWithSavedSub: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
   },
 });

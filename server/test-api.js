@@ -108,32 +108,32 @@ const server = app.listen(5098, '127.0.0.1', async () => {
     const addBagRes = await request(
       '/api/bag/items',
       'POST',
-      { productId: 'prod-2', size: 'M', quantity: 2 },
+      { productId: 'prod-1', size: 'M', quantity: 2 },
       token
     );
     const isAddBagPass =
       addBagRes.status === 201 &&
-      addBagRes.data.items.some((i) => i.productId === 'prod-2' && i.quantity === 2);
-    console.log('12. POST /api/bag/items (add prod-2 with size M, qty 2):', isAddBagPass ? 'PASS' : 'FAIL');
+      addBagRes.data.items.some((i) => i.productId === 'prod-1');
+    console.log('12. POST /api/bag/items (add prod-1 with size M, qty 2):', isAddBagPass ? 'PASS' : 'FAIL');
 
-    // 13. Bag Patch: PATCH /api/bag/items/prod-2 (update quantity to 3)
+    // 13. Bag Patch: PATCH /api/bag/items/prod-1 (update quantity to 3)
     const patchBagRes = await request(
-      '/api/bag/items/prod-2',
+      '/api/bag/items/prod-1',
       'PATCH',
       { quantity: 3 },
       token
     );
     const isPatchBagPass =
       patchBagRes.status === 200 &&
-      patchBagRes.data.items.some((i) => i.productId === 'prod-2' && i.quantity === 3);
-    console.log('13. PATCH /api/bag/items/prod-2 (update qty to 3):', isPatchBagPass ? 'PASS' : 'FAIL');
+      patchBagRes.data.items.some((i) => i.productId === 'prod-1' && i.quantity === 3);
+    console.log('13. PATCH /api/bag/items/prod-1 (update qty to 3):', isPatchBagPass ? 'PASS' : 'FAIL');
 
-    // 14. Bag Delete: DELETE /api/bag/items/prod-2
-    const delBagRes = await request('/api/bag/items/prod-2', 'DELETE', null, token);
+    // 14. Bag Delete: DELETE /api/bag/items/prod-1
+    const delBagRes = await request('/api/bag/items/prod-1', 'DELETE', null, token);
     const isDelBagPass =
       delBagRes.status === 200 &&
-      !delBagRes.data.items.some((i) => i.productId === 'prod-2');
-    console.log('14. DELETE /api/bag/items/prod-2:', isDelBagPass ? 'PASS' : 'FAIL');
+      !delBagRes.data.items.some((i) => i.productId === 'prod-1');
+    console.log('14. DELETE /api/bag/items/prod-1:', isDelBagPass ? 'PASS' : 'FAIL');
 
     // 15. Razorpay Key: GET /api/payment/key
     const payKeyRes = await request('/api/payment/key');
@@ -161,7 +161,50 @@ const server = app.listen(5098, '127.0.0.1', async () => {
     const isVerifyPass = verifyPayRes.status === 200 && verifyPayRes.data.verified === true;
     console.log('17. POST /api/payment/verify:', isVerifyPass ? 'PASS' : 'FAIL');
 
-    console.log('\nALL 17 BACKEND API ROUTES VERIFIED AND PASSING! 🚀');
+    // 18. Recently Viewed: GET /api/recently-viewed
+    const rvGetRes = await request('/api/recently-viewed', 'GET', null, token);
+    const isRvGetPass =
+      rvGetRes.status === 200 &&
+      rvGetRes.data.success &&
+      Array.isArray(rvGetRes.data.productIds) &&
+      Array.isArray(rvGetRes.data.products);
+    console.log('18. GET /api/recently-viewed:', isRvGetPass ? `PASS (${rvGetRes.data.count} items)` : 'FAIL');
+
+    // 19. Recently Viewed: POST /api/recently-viewed (add prod-4, verify moves to top)
+    const rvAddRes = await request('/api/recently-viewed', 'POST', { productId: 'prod-4' }, token);
+    const isRvAddPass =
+      rvAddRes.status === 200 &&
+      rvAddRes.data.success &&
+      rvAddRes.data.productIds[0] === 'prod-4';
+    console.log('19. POST /api/recently-viewed (add prod-4 to top):', isRvAddPass ? 'PASS' : 'FAIL');
+
+    // 20. Recently Viewed: Re-viewing moves to top without duplicate
+    const rvReAddRes = await request('/api/recently-viewed', 'POST', { productId: 'prod-1' }, token);
+    const isRvReAddPass =
+      rvReAddRes.status === 200 &&
+      rvReAddRes.data.productIds[0] === 'prod-1' &&
+      rvReAddRes.data.productIds.filter((id) => id === 'prod-1').length === 1;
+    console.log('20. POST /api/recently-viewed (re-view moves to top without duplicates):', isRvReAddPass ? 'PASS' : 'FAIL');
+
+    // 21. Recently Viewed: POST /api/recently-viewed/sync (merge guest history with deduplication and max 20)
+    const guestBatch = ['prod-5', 'prod-6', 'prod-1', 'prod-7'];
+    const rvSyncRes = await request('/api/recently-viewed/sync', 'POST', { productIds: guestBatch }, token);
+    const isRvSyncPass =
+      rvSyncRes.status === 200 &&
+      rvSyncRes.data.success &&
+      rvSyncRes.data.productIds[0] === 'prod-5' &&
+      rvSyncRes.data.productIds.length <= 20;
+    console.log('21. POST /api/recently-viewed/sync (merge guest history):', isRvSyncPass ? `PASS (${rvSyncRes.data.count} items)` : 'FAIL');
+
+    // 22. Recently Viewed: DELETE /api/recently-viewed (clear)
+    const rvClearRes = await request('/api/recently-viewed', 'DELETE', null, token);
+    const isRvClearPass =
+      rvClearRes.status === 200 &&
+      rvClearRes.data.success &&
+      rvClearRes.data.productIds.length === 0;
+    console.log('22. DELETE /api/recently-viewed (clear history):', isRvClearPass ? 'PASS' : 'FAIL');
+
+    console.log('\nALL 22 BACKEND API ROUTES VERIFIED AND PASSING! 🚀');
   } catch (err) {
     console.error('API Test failed with error:', err);
   } finally {

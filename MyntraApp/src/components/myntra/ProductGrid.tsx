@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -11,6 +12,7 @@ import { ProductCard } from './ProductCard';
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { Product } from '@/data/mock-data';
+import { useTheme } from '@/hooks/use-theme';
 
 interface ProductGridProps {
   products: Product[];
@@ -35,19 +37,23 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   onOpenFilter,
   appliedFilterCount = 0,
 }) => {
+  const { colors, isDark } = useTheme();
+  // Responsive columns: 4 columns on desktop, 3 on tablet, 2 on mobile (Hook must be called unconditionally before early return)
+  const { width } = useWindowDimensions();
+
   // If no products match the search or category
   if (products.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIconCircle}>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.surface }]}>
+        <View style={[styles.emptyIconCircle, { backgroundColor: colors.surfaceSecondary }]}>
           <Ionicons
             name="search-outline"
             size={36}
-            color={MyntraColors.textMuted}
+            color={colors.textMuted}
           />
         </View>
-        <Text style={styles.emptyTitle}>NO PRODUCTS FOUND</Text>
-        <Text style={styles.emptySubtitle}>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>NO PRODUCTS FOUND</Text>
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
           {"We couldn't find any items matching your search or filters."}
         </Text>
         {onResetFilters && (
@@ -62,42 +68,43 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     );
   }
 
-  // Split into 2 columns for a clean masonry / equal-column grid
-  const leftColumn: Product[] = [];
-  const rightColumn: Product[] = [];
+  const numColumns = width >= 1100 ? 4 : (width >= 750 ? 3 : 2);
 
+  const columns: Product[][] = Array.from({ length: numColumns }, () => []);
   products.forEach((product, index) => {
-    if (index % 2 === 0) {
-      leftColumn.push(product);
-    } else {
-      rightColumn.push(product);
-    }
+    columns[index % numColumns].push(product);
   });
 
   return (
     <View style={styles.container}>
       {/* Sort & Filter Action Bar */}
       {(onOpenSort || onOpenFilter) && (
-        <View style={styles.actionBar}>
+        <View
+          style={[
+            styles.actionBar,
+            { backgroundColor: colors.surface, borderBottomColor: colors.divider },
+          ]}>
           {onOpenSort && (
             <TouchableOpacity
               style={styles.actionButton}
               onPress={onOpenSort}
               activeOpacity={0.7}>
-              <Ionicons name="swap-vertical" size={15} color={MyntraColors.text} />
-              <Text style={styles.actionButtonText}>SORT</Text>
+              <Ionicons name="swap-vertical" size={15} color={colors.text} />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>SORT</Text>
             </TouchableOpacity>
           )}
 
-          {onOpenSort && onOpenFilter && <View style={styles.actionDivider} />}
+          {onOpenSort && onOpenFilter && (
+            <View style={[styles.actionDivider, { backgroundColor: colors.divider }]} />
+          )}
 
           {onOpenFilter && (
             <TouchableOpacity
               style={styles.actionButton}
               onPress={onOpenFilter}
               activeOpacity={0.7}>
-              <Ionicons name="options-outline" size={15} color={MyntraColors.text} />
-              <Text style={styles.actionButtonText}>FILTER</Text>
+              <Ionicons name="options-outline" size={15} color={colors.text} />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>FILTER</Text>
               {appliedFilterCount > 0 && (
                 <View style={styles.filterBadge}>
                   <Text style={styles.filterBadgeText}>{appliedFilterCount}</Text>
@@ -111,14 +118,16 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
       {/* Grid Header */}
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.sectionTitle}>ALL PRODUCTS</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>ALL PRODUCTS</Text>
           {activeFilterTitle ? (
-            <Text style={styles.activeFilterText}>
+            <Text style={[styles.activeFilterText, { color: colors.textSecondary }]}>
               Showing results for{' '}
-              <Text style={styles.activeFilterBold}>{activeFilterTitle}</Text>
+              <Text style={[styles.activeFilterBold, { color: colors.text }]}>
+                {activeFilterTitle}
+              </Text>
             </Text>
           ) : (
-            <Text style={styles.sectionSubtitle}>
+            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
               {products.length} Items • Handpicked for you
             </Text>
           )}
@@ -130,30 +139,21 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         </View>
       </View>
 
-      {/* Two Column Grid */}
+      {/* Responsive Dynamic Columns Grid */}
       <View style={styles.gridRow}>
-        <View style={styles.column}>
-          {leftColumn.map((item) => (
-            <ProductCard
-              key={item.id}
-              product={item}
-              isWishlisted={wishlistIds.has(item.id)}
-              onToggleWishlist={onToggleWishlist}
-              onPressCard={onPressProduct}
-            />
-          ))}
-        </View>
-        <View style={styles.column}>
-          {rightColumn.map((item) => (
-            <ProductCard
-              key={item.id}
-              product={item}
-              isWishlisted={wishlistIds.has(item.id)}
-              onToggleWishlist={onToggleWishlist}
-              onPressCard={onPressProduct}
-            />
-          ))}
-        </View>
+        {columns.map((colProducts, colIdx) => (
+          <View key={`grid-col-${colIdx}`} style={styles.column}>
+            {colProducts.map((item) => (
+              <ProductCard
+                key={item.id}
+                product={item}
+                isWishlisted={wishlistIds.has(item.id)}
+                onToggleWishlist={onToggleWishlist}
+                onPressCard={onPressProduct}
+              />
+            ))}
+          </View>
+        ))}
       </View>
     </View>
   );

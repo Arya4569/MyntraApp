@@ -17,6 +17,12 @@ const couponRoutes = require('./routes/couponRoutes');
 const insiderRoutes = require('./routes/insiderRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const recentlyViewedRoutes = require('./routes/recentlyViewedRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+const addressRoutes = require('./routes/addressRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
+const realtimeRoutes = require('./routes/realtimeRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -72,6 +78,12 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/insider', insiderRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/recently-viewed', recentlyViewedRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/addresses', addressRoutes);
+app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/realtime', realtimeRoutes);
 
 // 404 Handler
 app.use((req, res) => {
@@ -103,6 +115,8 @@ if (require.main === module) {
     console.log(`🏠 Home:       http://localhost:${PORT}/api/home`);
     console.log(`❤️ Wishlist:   http://localhost:${PORT}/api/wishlist`);
     console.log(`🛍️ Bag:        http://localhost:${PORT}/api/bag`);
+    console.log(`🔔 Notifs:     http://localhost:${PORT}/api/notifications`);
+    console.log(`📦 Orders:      http://localhost:${PORT}/api/orders`);
     console.log(`===============================================`);
   });
 }

@@ -28,30 +28,27 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
   onSwitchToSignUp,
   onSwitchToPasswordLogin,
 }) => {
-  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
   const [inputTouched, setInputTouched] = useState(false);
   const [showHelpAlert, setShowHelpAlert] = useState(false);
 
-  // Clean numbers only
-  const cleanMobile = mobile.replace(/\D/g, '').slice(0, 10);
-  const isValidNumber = /^[6-9]\d{9}$/.test(cleanMobile);
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isValidInput = isValidEmail;
 
-  const handleTextChange = (text: string) => {
-    const digitsOnly = text.replace(/\D/g, '').slice(0, 10);
-    setMobile(digitsOnly);
-    if (!inputTouched && digitsOnly.length > 0) {
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (!inputTouched && text.length > 0) {
       setInputTouched(true);
     }
   };
 
   const handleSubmit = () => {
-    if (isValidNumber && !isLoading) {
-      onContinue(cleanMobile);
+    if (isValidInput && !isLoading) {
+      onContinue(email.trim().toLowerCase());
     }
   };
 
-  const showValidationError =
-    inputTouched && cleanMobile.length > 0 && !isValidNumber;
+  const showValidationError = inputTouched && email.length > 0 && !isValidEmail;
 
   return (
     <View style={styles.container}>
@@ -69,7 +66,7 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
             <Text style={styles.discountTagText}>FLAT ₹500 OFF</Text>
           </View>
           <Text style={styles.bannerTitle}>Unlock Exclusive Offers</Text>
-          <Text style={styles.bannerSub}>Free Delivery on your first order</Text>
+          <Text style={styles.bannerSub}>Special Offers on your first order</Text>
         </View>
       </View>
 
@@ -81,36 +78,38 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
           <Text style={styles.title}>Signup</Text>
         </View>
 
-        {/* Mobile Input Field */}
+        <Text style={styles.inputGuideSubtitle}>
+          Enter your registered Email to receive a verification OTP
+        </Text>
+
+        {/* Clean Email Input Field */}
         <View style={styles.inputWrapper}>
-          {/* Country Code Prefix */}
-          <View style={styles.countryCodePill}>
-            <Text style={styles.countryCodeText}>+91</Text>
+          <View style={styles.inputIconPill}>
             <Ionicons
-              name="chevron-down"
-              size={12}
+              name="mail-outline"
+              size={18}
               color={MyntraColors.textSecondary}
             />
             <View style={styles.codeDivider} />
           </View>
 
-          {/* Number Input */}
           <TextInput
             style={styles.input}
-            placeholder="Mobile Number *"
+            placeholder="Enter your Email *"
             placeholderTextColor={MyntraColors.textMuted}
-            keyboardType="phone-pad"
-            maxLength={10}
-            value={cleanMobile}
-            onChangeText={handleTextChange}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={handleEmailChange}
             autoFocus
           />
 
-          {cleanMobile.length === 10 && (
+          {email.length > 3 && (
             <Ionicons
-              name={isValidNumber ? 'checkmark-circle' : 'alert-circle'}
+              name={isValidEmail ? 'checkmark-circle' : 'alert-circle'}
               size={20}
-              color={isValidNumber ? MyntraColors.ratingGreen : '#e53935'}
+              color={isValidEmail ? MyntraColors.ratingGreen : '#e53935'}
             />
           )}
         </View>
@@ -118,7 +117,7 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
         {/* Validation Error Message */}
         {showValidationError && (
           <Text style={styles.errorText}>
-            Please enter a valid 10-digit Indian mobile number (starts with 6-9).
+            Please enter a valid email address (e.g. name@gmail.com).
           </Text>
         )}
 
@@ -135,10 +134,10 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={handleSubmit}
-          disabled={!isValidNumber || isLoading}
+          disabled={!isValidInput || isLoading}
           style={[
             styles.continueButton,
-            (!isValidNumber || isLoading) && styles.continueButtonDisabled,
+            (!isValidInput || isLoading) && styles.continueButtonDisabled,
           ]}>
           {isLoading ? (
             <ActivityIndicator color={MyntraColors.white} size="small" />
@@ -272,6 +271,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: MyntraColors.textSecondary,
     fontWeight: '500',
+  },
+  inputGuideSubtitle: {
+    fontSize: 12.5,
+    color: MyntraColors.textSecondary,
+    marginBottom: 16,
+    lineHeight: 18,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -433,5 +438,45 @@ const styles = StyleSheet.create({
   signUpHighlight: {
     color: MyntraColors.primary,
     fontWeight: '800',
+  },
+  methodToggleRow: {
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f6',
+    borderRadius: 8,
+    padding: 3,
+    marginBottom: 16,
+    gap: 4,
+  },
+  methodTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 6,
+    gap: 6,
+  },
+  methodTabActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  methodTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: MyntraColors.textSecondary,
+  },
+  methodTabTextActive: {
+    color: MyntraColors.primary,
+    fontWeight: '700',
+  },
+  inputIconPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 12,
+    paddingRight: 6,
   },
 });

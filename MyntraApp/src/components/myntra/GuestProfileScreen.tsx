@@ -9,8 +9,11 @@ import {
 } from 'react-native';
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
+import { useTheme } from '@/hooks/use-theme';
 
+import { AppearanceSetting } from './AppearanceSetting';
 import { HelpCenterModal } from './HelpCenterModal';
+import { NotificationSettingsSection } from './NotificationSettingsSection';
 
 interface GuestProfileScreenProps {
   onLoginPress: () => void;
@@ -29,27 +32,44 @@ export const GuestProfileScreen: React.FC<GuestProfileScreenProps> = ({
   wishlistCount,
   bagCount = 0,
 }) => {
+  const { colors, isDark } = useTheme();
   const [showHelpCenter, setShowHelpCenter] = React.useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = React.useState(false);
   const [showTerms, setShowTerms] = React.useState(false);
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}>
       {/* Top Guest Welcome Card */}
-      <View style={styles.heroCard}>
-        <View style={styles.avatarCircle}>
+      <View
+        style={[
+          styles.heroCard,
+          {
+            backgroundColor: isDark ? colors.surfaceElevated : '#fff7f9',
+            borderBottomColor: colors.cardBorder,
+          },
+        ]}>
+        <View
+          style={[
+            styles.avatarCircle,
+            {
+              backgroundColor: colors.surfaceSecondary,
+              borderColor: colors.cardBorder,
+            },
+          ]}>
           <Ionicons
             name="person-outline"
             size={36}
-            color={MyntraColors.textSecondary}
+            color={colors.textSecondary}
           />
         </View>
 
-        <Text style={styles.welcomeTitle}>Welcome to Myntra</Text>
-        <Text style={styles.welcomeSub}>
+        <Text style={[styles.welcomeTitle, { color: colors.text }]}>
+          Welcome to Myntra
+        </Text>
+        <Text style={[styles.welcomeSub, { color: colors.textSecondary }]}>
           Log in to view your orders, saved addresses, wishlist, and exclusive
           insider rewards.
         </Text>
@@ -66,7 +86,10 @@ export const GuestProfileScreen: React.FC<GuestProfileScreenProps> = ({
           {onSignUpPress && (
             <TouchableOpacity
               onPress={onSignUpPress}
-              style={styles.signUpButton}
+              style={[
+                styles.signUpButton,
+                { backgroundColor: colors.surface, borderColor: colors.primary },
+              ]}
               activeOpacity={0.85}>
               <Text style={styles.signUpButtonText}>SIGN UP</Text>
             </TouchableOpacity>
@@ -75,43 +98,88 @@ export const GuestProfileScreen: React.FC<GuestProfileScreenProps> = ({
       </View>
 
       {/* Benefits Highlights Strip */}
-      <View style={styles.benefitsRow}>
+      <View
+        style={[
+          styles.benefitsRow,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.divider,
+          },
+        ]}>
         <View style={styles.benefitItem}>
-          <Ionicons name="gift-outline" size={20} color={MyntraColors.primary} />
-          <Text style={styles.benefitTitle}>₹500 OFF</Text>
-          <Text style={styles.benefitDesc}>On first order</Text>
+          <Ionicons name="gift-outline" size={20} color={colors.primary} />
+          <Text style={[styles.benefitTitle, { color: colors.text }]}>
+            ₹500 OFF
+          </Text>
+          <Text style={[styles.benefitDesc, { color: colors.textSecondary }]}>
+            On first order
+          </Text>
         </View>
 
-        <View style={styles.benefitDivider} />
+        <View
+          style={[styles.benefitDivider, { backgroundColor: colors.divider }]}
+        />
 
         <View style={styles.benefitItem}>
-          <Ionicons name="cube-outline" size={20} color={MyntraColors.primary} />
-          <Text style={styles.benefitTitle}>Live Tracking</Text>
-          <Text style={styles.benefitDesc}>Easy order status</Text>
+          <Ionicons name="cube-outline" size={20} color={colors.primary} />
+          <Text style={[styles.benefitTitle, { color: colors.text }]}>
+            Live Tracking
+          </Text>
+          <Text style={[styles.benefitDesc, { color: colors.textSecondary }]}>
+            Easy order status
+          </Text>
         </View>
 
-        <View style={styles.benefitDivider} />
+        <View
+          style={[styles.benefitDivider, { backgroundColor: colors.divider }]}
+        />
 
         <View style={styles.benefitItem}>
-          <Ionicons name="sparkles-outline" size={20} color={MyntraColors.primary} />
-          <Text style={styles.benefitTitle}>Insider Club</Text>
-          <Text style={styles.benefitDesc}>VIP access & perks</Text>
+          <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
+          <Text style={[styles.benefitTitle, { color: colors.text }]}>
+            Insider Club
+          </Text>
+          <Text style={[styles.benefitDesc, { color: colors.textSecondary }]}>
+            VIP access & perks
+          </Text>
         </View>
       </View>
 
+      {/* Dynamic Theme & Appearance Selector */}
+      <AppearanceSetting />
+
+      {/* Notification Preferences (Persisted locally for guests, synced on login) */}
+      <NotificationSettingsSection />
+
       {/* Menu Shortcuts */}
-      <View style={styles.menuContainer}>
+      <View
+        style={[
+          styles.menuContainer,
+          {
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            borderRadius: 12,
+            paddingVertical: 4,
+          },
+        ]}>
         {/* Wishlist Shortcut */}
         <TouchableOpacity
           onPress={onGoToWishlist}
-          style={styles.menuRow}
+          style={[styles.menuRow, { borderBottomColor: colors.divider }]}
           activeOpacity={0.7}>
-          <View style={styles.menuIconCircle}>
-            <Ionicons name="heart-outline" size={18} color={MyntraColors.text} />
+          <View
+            style={[
+              styles.menuIconCircle,
+              { backgroundColor: colors.surfaceSecondary },
+            ]}>
+            <Ionicons name="heart-outline" size={18} color={colors.text} />
           </View>
           <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>Wishlist</Text>
-            <Text style={styles.menuSubtitle}>Your shortlisted styles</Text>
+            <Text style={[styles.menuTitle, { color: colors.text }]}>Wishlist</Text>
+            <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+              Your shortlisted styles
+            </Text>
           </View>
           {wishlistCount > 0 && (
             <View style={styles.countBadge}>
@@ -121,7 +189,7 @@ export const GuestProfileScreen: React.FC<GuestProfileScreenProps> = ({
           <Ionicons
             name="chevron-forward"
             size={18}
-            color={MyntraColors.textMuted}
+            color={colors.textMuted}
           />
         </TouchableOpacity>
 
@@ -129,14 +197,26 @@ export const GuestProfileScreen: React.FC<GuestProfileScreenProps> = ({
         {onGoToBag && (
           <TouchableOpacity
             onPress={onGoToBag}
-            style={styles.menuRow}
+            style={[styles.menuRow, { borderBottomColor: colors.divider }]}
             activeOpacity={0.7}>
-            <View style={styles.menuIconCircle}>
-              <Ionicons name="bag-handle-outline" size={18} color={MyntraColors.text} />
+            <View
+              style={[
+                styles.menuIconCircle,
+                { backgroundColor: colors.surfaceSecondary },
+              ]}>
+              <Ionicons
+                name="bag-handle-outline"
+                size={18}
+                color={colors.text}
+              />
             </View>
             <View style={styles.menuTextContainer}>
-              <Text style={styles.menuTitle}>Shopping Bag</Text>
-              <Text style={styles.menuSubtitle}>Items saved in your bag</Text>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>
+                Shopping Bag
+              </Text>
+              <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+                Items saved in your bag
+              </Text>
             </View>
             {bagCount > 0 && (
               <View style={styles.countBadge}>
@@ -146,7 +226,7 @@ export const GuestProfileScreen: React.FC<GuestProfileScreenProps> = ({
             <Ionicons
               name="chevron-forward"
               size={18}
-              color={MyntraColors.textMuted}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         )}
@@ -154,88 +234,118 @@ export const GuestProfileScreen: React.FC<GuestProfileScreenProps> = ({
         {/* Orders Shortcut */}
         <TouchableOpacity
           onPress={onLoginPress}
-          style={styles.menuRow}
+          style={[styles.menuRow, { borderBottomColor: colors.divider }]}
           activeOpacity={0.7}>
-          <View style={styles.menuIconCircle}>
-            <Ionicons name="cube-outline" size={18} color={MyntraColors.text} />
+          <View
+            style={[
+              styles.menuIconCircle,
+              { backgroundColor: colors.surfaceSecondary },
+            ]}>
+            <Ionicons name="cube-outline" size={18} color={colors.text} />
           </View>
           <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>Orders</Text>
-            <Text style={styles.menuSubtitle}>Check order status & track packages</Text>
+            <Text style={[styles.menuTitle, { color: colors.text }]}>Orders</Text>
+            <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+              Check order status & track packages
+            </Text>
           </View>
           <Ionicons
             name="chevron-forward"
             size={18}
-            color={MyntraColors.textMuted}
+            color={colors.textMuted}
           />
         </TouchableOpacity>
 
         {/* Help Center */}
         <TouchableOpacity
           onPress={() => setShowHelpCenter(true)}
-          style={styles.menuRow}
+          style={[styles.menuRow, { borderBottomColor: colors.divider }]}
           activeOpacity={0.7}>
-          <View style={styles.menuIconCircle}>
+          <View
+            style={[
+              styles.menuIconCircle,
+              { backgroundColor: colors.surfaceSecondary },
+            ]}>
             <Ionicons
               name="help-buoy-outline"
               size={18}
-              color={MyntraColors.text}
+              color={colors.text}
             />
           </View>
           <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>Help Center</Text>
-            <Text style={styles.menuSubtitle}>24x7 customer support & FAQs</Text>
+            <Text style={[styles.menuTitle, { color: colors.text }]}>
+              Help Center
+            </Text>
+            <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+              24x7 customer support & FAQs
+            </Text>
           </View>
           <Ionicons
             name="chevron-forward"
             size={18}
-            color={MyntraColors.textMuted}
+            color={colors.textMuted}
           />
         </TouchableOpacity>
 
         {/* Terms of Use */}
         <TouchableOpacity
           onPress={() => setShowTerms(true)}
-          style={styles.menuRow}
+          style={[styles.menuRow, { borderBottomColor: colors.divider }]}
           activeOpacity={0.7}>
-          <View style={styles.menuIconCircle}>
+          <View
+            style={[
+              styles.menuIconCircle,
+              { backgroundColor: colors.surfaceSecondary },
+            ]}>
             <Ionicons
               name="document-text-outline"
               size={18}
-              color={MyntraColors.text}
+              color={colors.text}
             />
           </View>
           <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>Terms of Use</Text>
-            <Text style={styles.menuSubtitle}>Usage guidelines & policies</Text>
+            <Text style={[styles.menuTitle, { color: colors.text }]}>
+              Terms of Use
+            </Text>
+            <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+              Usage guidelines & policies
+            </Text>
           </View>
           <Ionicons
             name="chevron-forward"
             size={18}
-            color={MyntraColors.textMuted}
+            color={colors.textMuted}
           />
         </TouchableOpacity>
 
         {/* Privacy Policy */}
         <TouchableOpacity
           onPress={() => setShowPrivacyPolicy(true)}
-          style={styles.menuRow}
+          style={[styles.menuRow, { borderBottomColor: colors.divider }]}
           activeOpacity={0.7}>
-          <View style={styles.menuIconCircle}>
+          <View
+            style={[
+              styles.menuIconCircle,
+              { backgroundColor: colors.surfaceSecondary },
+            ]}>
             <Ionicons
               name="shield-checkmark-outline"
               size={18}
-              color={MyntraColors.text}
+              color={colors.text}
             />
           </View>
           <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>Privacy Policy</Text>
-            <Text style={styles.menuSubtitle}>How we safeguard your data</Text>
+            <Text style={[styles.menuTitle, { color: colors.text }]}>
+              Privacy Policy
+            </Text>
+            <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+              How we safeguard your data
+            </Text>
           </View>
           <Ionicons
             name="chevron-forward"
             size={18}
-            color={MyntraColors.textMuted}
+            color={colors.textMuted}
           />
         </TouchableOpacity>
       </View>

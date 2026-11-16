@@ -7,3 +7,19 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* Remove default browser focus outlines and box shadows on inputs */
+input,
+textarea,
+[tabindex] {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Hide Microsoft Edge and Chromium native password reveal & clear buttons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

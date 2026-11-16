@@ -17,6 +17,12 @@ services:
         value: 30d
       - key: CLIENT_URL
         value: "*"
+      - key: EMAIL_SERVICE
+        value: gmail
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
 
   # 2. Frontend Web App (Expo Web Static Build)
   - type: static

@@ -11,6 +11,7 @@ import {
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { MainCategory, Product, PRODUCTS, SUBCATEGORIES } from '@/data/mock-data';
+import { useTheme } from '@/hooks/use-theme';
 import { storeService } from '@/services/store-service';
 
 interface CategoriesScreenProps {
@@ -48,6 +49,8 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
   const [bannersDict, setBannersDict] = useState<Record<string, { title: string; tag: string }>>(CATEGORY_BANNERS);
   const [selectedMainCat, setSelectedMainCat] = useState<MainCategory>('Men');
 
+  const { colors, isDark } = useTheme();
+
   useEffect(() => {
     let isMounted = true;
     storeService.fetchSubcategories().then((res) => {
@@ -78,27 +81,27 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
   ).length;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Categories Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
         <View>
-          <Text style={styles.headerTitle}>ALL CATEGORIES</Text>
-          <Text style={styles.headerSub}>Explore our 6 curated fashion departments</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>ALL CATEGORIES</Text>
+          <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Explore our 6 curated fashion departments</Text>
         </View>
         <TouchableOpacity
           onPress={() => onSelectCategory?.(selectedMainCat)}
-          style={styles.viewAllBtn}
+          style={[styles.viewAllBtn, { backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3' }]}
           activeOpacity={0.8}
           accessibilityLabel="Explore all products in this category">
           <Text style={styles.viewAllText}>EXPLORE ALL</Text>
-          <Ionicons name="arrow-forward" size={13} color={MyntraColors.primary} />
+          <Ionicons name="arrow-forward" size={13} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.contentRow}>
         {/* Left Side Rail: 6 Main Departments */}
         <ScrollView
-          style={styles.leftRail}
+          style={[styles.leftRail, { backgroundColor: isDark ? colors.surfaceElevated : '#f8f8fa', borderRightColor: colors.divider }]}
           showsVerticalScrollIndicator={false}>
           {categoryNames.map((name) => {
             const isActive = selectedMainCat === name;
@@ -110,17 +113,19 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
                 activeOpacity={0.8}
                 style={[
                   styles.railItem,
-                  isActive && styles.railItemActive,
+                  { borderBottomColor: colors.border },
+                  isActive && [styles.railItemActive, { backgroundColor: colors.surface }],
                 ]}>
                 <Ionicons
                   name={iconName}
                   size={18}
-                  color={isActive ? MyntraColors.primary : MyntraColors.textMuted}
+                  color={isActive ? colors.primary : colors.textMuted}
                   style={styles.railIcon}
                 />
                 <Text
                   style={[
                     styles.railText,
+                    { color: colors.textSecondary },
                     isActive && styles.railTextActive,
                   ]}>
                   {name}
@@ -132,24 +137,24 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
 
         {/* Right Side: Subcategories Directory */}
         <ScrollView
-          style={styles.rightContent}
+          style={[styles.rightContent, { backgroundColor: colors.background }]}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.rightScrollContent}>
           {/* Department Banner Card */}
           <TouchableOpacity
             onPress={() => onSelectCategory?.(selectedMainCat)}
-            style={styles.bannerContainer}
+            style={[styles.bannerContainer, { backgroundColor: isDark ? colors.surfaceElevated : '#fff4f6', borderColor: isDark ? colors.border : '#ffc1cf' }]}
             activeOpacity={0.85}>
             <Text style={styles.bannerTag}>{banner.tag}</Text>
-            <Text style={styles.bannerHeading}>{banner.title}</Text>
-            <Text style={styles.bannerSubtext}>
+            <Text style={[styles.bannerHeading, { color: colors.text }]}>{banner.title}</Text>
+            <Text style={[styles.bannerSubtext, { color: colors.textSecondary }]}>
               {departmentCount} items available in {selectedMainCat} • Tap to view all
             </Text>
           </TouchableOpacity>
 
           <View style={styles.subHeaderRow}>
-            <Text style={styles.subHeading}>SUBCATEGORIES</Text>
-            <Text style={styles.subCount}>{subItems.length} types</Text>
+            <Text style={[styles.subHeading, { color: colors.textMuted }]}>SUBCATEGORIES</Text>
+            <Text style={[styles.subCount, { color: colors.textMuted }]}>{subItems.length} types</Text>
           </View>
 
           {subItems.map((sub) => {
@@ -167,21 +172,21 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
                 key={sub}
                 onPress={() => onSelectSubcategory(selectedMainCat, sub)}
                 activeOpacity={0.7}
-                style={styles.subItemRow}>
+                style={[styles.subItemRow, { borderBottomColor: colors.border }]}>
                 <View style={styles.subItemLeft}>
-                  <View style={styles.subBullet} />
-                  <Text style={styles.subItemText}>{sub}</Text>
+                  <View style={[styles.subBullet, { backgroundColor: colors.primary }]} />
+                  <Text style={[styles.subItemText, { color: colors.text }]}>{sub}</Text>
                 </View>
                 <View style={styles.subItemRight}>
                   {count > 0 && (
-                    <View style={styles.countPill}>
-                      <Text style={styles.countPillText}>{count} items</Text>
+                    <View style={[styles.countPill, { backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6' }]}>
+                      <Text style={[styles.countPillText, { color: colors.textSecondary }]}>{count} items</Text>
                     </View>
                   )}
                   <Ionicons
                     name="chevron-forward"
                     size={15}
-                    color={MyntraColors.textMuted}
+                    color={colors.textMuted}
                   />
                 </View>
               </TouchableOpacity>
@@ -189,9 +194,9 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
           })}
 
           {/* Trending picks preview in this department */}
-          <View style={styles.previewSection}>
+          <View style={[styles.previewSection, { borderTopColor: colors.divider }]}>
             <View style={styles.previewHeaderRow}>
-              <Text style={styles.previewHeading}>TRENDING IN {selectedMainCat.toUpperCase()}</Text>
+              <Text style={[styles.previewHeading, { color: colors.text }]}>TRENDING IN {selectedMainCat.toUpperCase()}</Text>
               <TouchableOpacity
                 onPress={() => onSelectCategory?.(selectedMainCat)}
                 activeOpacity={0.8}>
@@ -207,11 +212,11 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
                 .map((p) => (
                   <TouchableOpacity
                     key={`cat-prev-${p.id}`}
-                    style={styles.previewCard}
+                    style={[styles.previewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                     onPress={() => (onPressProduct ? onPressProduct(p) : onSelectCategory?.(selectedMainCat))}
                     activeOpacity={0.85}>
-                    <Image source={{ uri: p.image }} style={styles.previewImage} />
-                    <Text style={styles.previewBrand} numberOfLines={1}>
+                    <Image source={{ uri: p.image }} style={[styles.previewImage, { backgroundColor: colors.surfaceElevated }]} />
+                    <Text style={[styles.previewBrand, { color: colors.text }]} numberOfLines={1}>
                       {p.brand}
                     </Text>
                     <Text style={styles.previewPrice}>₹{p.price}</Text>

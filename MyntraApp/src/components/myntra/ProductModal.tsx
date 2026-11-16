@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -17,6 +17,8 @@ import {
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { Product, PRODUCTS, PROMO_BANNERS } from '@/data/mock-data';
+import { useTheme } from '@/hooks/use-theme';
+import { storeService } from '@/services/store-service';
 
 export interface ProductModalProps {
   product: Product | null;
@@ -46,6 +48,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   allProducts = PRODUCTS,
 }) => {
   const scrollRef = useRef<ScrollView>(null);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   // Active image gallery index
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -178,7 +182,23 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   // Copy Coupon helper
-  const handleCopyCoupon = (code: string) => {
+  const handleCopyCoupon = async (code: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else if (typeof document !== 'undefined') {
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+    } catch (e) {
+      console.warn('Clipboard write failed:', e);
+    }
     setCopiedCoupon(code);
     setTimeout(() => {
       setCopiedCoupon(null);
@@ -204,23 +224,46 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       : [product.image]
     : [];
 
-  // Similar products derived from catalog
+  // Similar products dynamically loaded from recommendation API with local fallback
+  const [apiSimilarProducts, setApiSimilarProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (visible && product?.id) {
+      storeService
+        .fetchSimilarProducts(product.id, 6)
+        .then((res) => {
+          if (isMounted && Array.isArray(res) && res.length > 0) {
+            setApiSimilarProducts(res);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [visible, product?.id]);
+
   let similarProducts: Product[] = [];
   if (product) {
-    const catalogSource = allProducts && allProducts.length > 0 ? allProducts : PRODUCTS;
-    const sameSub = catalogSource.filter(
-      (p) =>
-        p.id !== product.id &&
-        p.category === product.category &&
-        p.subcategory === product.subcategory
-    );
-    if (sameSub.length >= 4) {
-      similarProducts = sameSub.slice(0, 6);
+    if (apiSimilarProducts.length > 0) {
+      similarProducts = apiSimilarProducts;
     } else {
-      const sameCat = catalogSource.filter(
-        (p) => p.id !== product.id && p.category === product.category
+      const catalogSource = allProducts && allProducts.length > 0 ? allProducts : PRODUCTS;
+      const sameSub = catalogSource.filter(
+        (p) =>
+          p.id !== product.id &&
+          p.category === product.category &&
+          p.subcategory === product.subcategory
       );
-      similarProducts = sameCat.slice(0, 6);
+      if (sameSub.length >= 4) {
+        similarProducts = sameSub.slice(0, 6);
+      } else {
+        const sameCat = catalogSource.filter(
+          (p) => p.id !== product.id && p.category === product.category
+        );
+        similarProducts = sameCat.slice(0, 6);
+      }
     }
   }
 
@@ -1009,7 +1052,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -1020,7 +1063,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 520 : undefined,
     height: Platform.OS === 'web' ? '94%' : '95%',
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
@@ -1036,8 +1079,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
-    backgroundColor: MyntraColors.white,
+    borderBottomColor: colors.divider,
+    backgroundColor: colors.surface,
   },
   headerBackBtn: {
     width: 36,
@@ -1054,12 +1097,12 @@ const styles = StyleSheet.create({
   sheetBrand: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   sheetSub: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   headerActions: {
@@ -1086,7 +1129,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 2,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 9,
     minWidth: 16,
     height: 16,
@@ -1108,7 +1151,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   scrollContent: {
@@ -1118,7 +1161,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     height: 390,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: colors.surfaceElevated,
   },
   modalImage: {
     width: '100%',
@@ -1130,7 +1173,7 @@ const styles = StyleSheet.create({
     left: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
     paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 4,
@@ -1144,22 +1187,22 @@ const styles = StyleSheet.create({
   modalRatingText: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   modalRatingDivider: {
-    color: '#d4d5d9',
+    color: colors.textMuted,
     fontSize: 10,
   },
   modalRatingCount: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   badgeTag: {
     position: 'absolute',
     top: 14,
     left: 14,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -1210,10 +1253,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   thumbnailsContainer: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
+    borderBottomColor: colors.divider,
   },
   thumbnailsRow: {
     paddingHorizontal: Spacing.md,
@@ -1224,12 +1267,12 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
     overflow: 'hidden',
     position: 'relative',
   },
   thumbBtnActive: {
-    borderColor: MyntraColors.primary,
+    borderColor: colors.primary,
   },
   thumbActiveIndicator: {
     position: 'absolute',
@@ -1237,7 +1280,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
   },
   thumbImage: {
     width: '100%',
@@ -1246,7 +1289,7 @@ const styles = StyleSheet.create({
   infoSection: {
     padding: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
+    borderBottomColor: colors.divider,
   },
   brandVerifiedRow: {
     flexDirection: 'row',
@@ -1256,12 +1299,12 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.8,
   },
   productTitle: {
     fontSize: 13.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 3,
     lineHeight: 18,
   },
@@ -1274,15 +1317,15 @@ const styles = StyleSheet.create({
   modalPrice: {
     fontSize: 22,
     fontWeight: '900',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   modalOriginalPrice: {
     fontSize: 14,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
   discountBadge: {
-    backgroundColor: '#fff0f3',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 4,
@@ -1290,7 +1333,7 @@ const styles = StyleSheet.create({
   discountBadgeText: {
     fontSize: 12.5,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   taxSavingsRow: {
     flexDirection: 'row',
@@ -1300,17 +1343,17 @@ const styles = StyleSheet.create({
   },
   taxInfo: {
     fontSize: 11,
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
     fontWeight: '600',
   },
   savingsPill: {
-    backgroundColor: '#e8f5e9',
+    backgroundColor: isDark ? 'rgba(46, 125, 50, 0.2)' : '#e8f5e9',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   savingsPillText: {
-    color: '#2e7d32',
+    color: isDark ? '#4ade80' : '#2e7d32',
     fontSize: 10.5,
     fontWeight: '700',
   },
@@ -1345,19 +1388,19 @@ const styles = StyleSheet.create({
   sectionCard: {
     padding: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
+    borderBottomColor: colors.divider,
   },
   sectionLabel: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   sectionValueHighlight: {
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   requiredMark: {
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   colorsRow: {
     flexDirection: 'row',
@@ -1373,12 +1416,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#d5d6dd',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   colorPillActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff4f6',
+    borderColor: colors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff4f6',
   },
   colorDot: {
     width: 12,
@@ -1389,11 +1432,11 @@ const styles = StyleSheet.create({
   },
   colorText: {
     fontSize: 11.5,
-    color: MyntraColors.text,
+    color: colors.text,
     fontWeight: '600',
   },
   colorTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   sizeHeaderRow: {
@@ -1404,7 +1447,7 @@ const styles = StyleSheet.create({
   sizeChartLink: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
     letterSpacing: 0.4,
   },
   sizeErrorContainer: {
@@ -1432,15 +1475,15 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: '#d5d6dd',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   sizeCircleSelected: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff0f3',
+    borderColor: colors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
   },
   sizeCircleAlert: {
     borderColor: '#e53935',
@@ -1450,10 +1493,10 @@ const styles = StyleSheet.create({
   sizeCircleText: {
     fontSize: 13,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   sizeCircleTextSelected: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   quantityHeaderRow: {
@@ -1470,22 +1513,22 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#d5d6dd',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   qtyPillActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff0f3',
+    borderColor: colors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
   },
   qtyPillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   qtyPillTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   offersHeaderRow: {
@@ -1497,16 +1540,16 @@ const styles = StyleSheet.create({
   offersHeading: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   couponCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff9fa',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff9fa',
     borderWidth: 1,
-    borderColor: '#ffd0da',
+    borderColor: isDark ? colors.border : '#ffd0da',
     borderRadius: 8,
     padding: 10,
     marginBottom: 8,
@@ -1518,29 +1561,29 @@ const styles = StyleSheet.create({
   couponDiscount: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   couponCodeText: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   couponBold: {
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   couponExpiry: {
     fontSize: 9.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     marginTop: 1,
   },
   copyCouponBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
   },
   copyCouponBtnActive: {
-    backgroundColor: MyntraColors.ratingGreen,
+    backgroundColor: colors.ratingGreen,
   },
   copyCouponText: {
     color: '#fff',
@@ -1557,7 +1600,7 @@ const styles = StyleSheet.create({
   bankOfferText: {
     flex: 1,
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 16,
   },
   deliveryHeaderRow: {
@@ -1575,11 +1618,11 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     borderWidth: 1,
-    borderColor: '#d5d6dd',
+    borderColor: colors.border,
     borderRadius: 6,
     paddingHorizontal: 12,
     fontSize: 13,
-    color: MyntraColors.text,
+    color: colors.text,
     outlineStyle: 'none' as any,
   },
   pincodeCheckBtn: {
@@ -1588,14 +1631,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 6,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f5f5f7',
     borderWidth: 1,
-    borderColor: '#d5d6dd',
+    borderColor: colors.border,
   },
   pincodeCheckText: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   pincodeStatusCard: {
     flexDirection: 'row',
@@ -1606,9 +1649,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   pincodeStatusSuccess: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: isDark ? 'rgba(46, 125, 50, 0.2)' : '#f0fdf4',
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: isDark ? colors.border : '#bbf7d0',
   },
   pincodeStatusError: {
     backgroundColor: '#fff1f0',
@@ -1618,11 +1661,11 @@ const styles = StyleSheet.create({
   pincodeStatusTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   pincodeStatusSub: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   deliveryPerksRow: {
@@ -1631,7 +1674,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f2f2f4',
+    borderTopColor: colors.divider,
   },
   deliveryPerk: {
     alignItems: 'center',
@@ -1641,12 +1684,12 @@ const styles = StyleSheet.create({
   deliveryPerkText: {
     fontSize: 10.5,
     fontWeight: '600',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   descriptionText: {
     fontSize: 12.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 18,
     marginTop: 6,
   },
@@ -1656,25 +1699,25 @@ const styles = StyleSheet.create({
   specsTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     marginBottom: 6,
   },
   specsRow: {
     flexDirection: 'row',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#f6f6f8',
+    borderBottomColor: colors.border,
   },
   specsKey: {
     width: 140,
     fontSize: 11.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '600',
   },
   specsVal: {
     flex: 1,
     fontSize: 11.5,
-    color: MyntraColors.text,
+    color: colors.text,
     fontWeight: '600',
   },
   ratingsHeaderRow: {
@@ -1691,7 +1734,7 @@ const styles = StyleSheet.create({
   verifiedBuyersText: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
   },
   ratingSummaryRow: {
     flexDirection: 'row',
@@ -1701,9 +1744,9 @@ const styles = StyleSheet.create({
   bigScoreBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f6fdf9',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f6fdf9',
     borderWidth: 1,
-    borderColor: '#c6f2df',
+    borderColor: isDark ? colors.border : '#c6f2df',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -1717,11 +1760,11 @@ const styles = StyleSheet.create({
   bigScoreNumber: {
     fontSize: 24,
     fontWeight: '900',
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
   },
   bigScoreCount: {
     fontSize: 10.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
     marginTop: 4,
   },
@@ -1738,12 +1781,12 @@ const styles = StyleSheet.create({
     width: 26,
     fontSize: 10.5,
     fontWeight: '700',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   barTrack: {
     flex: 1,
     height: 5,
-    backgroundColor: '#ebebef',
+    backgroundColor: isDark ? colors.border : '#ebebef',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -1754,14 +1797,14 @@ const styles = StyleSheet.create({
   barPctText: {
     width: 32,
     fontSize: 10,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'right',
   },
   customerSentimentCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f5f5f7',
     padding: 8,
     borderRadius: 6,
     marginTop: 12,
@@ -1769,7 +1812,7 @@ const styles = StyleSheet.create({
   customerSentimentText: {
     flex: 1,
     fontSize: 11,
-    color: MyntraColors.text,
+    color: colors.text,
     fontWeight: '600',
   },
   reviewPolicyCard: {
@@ -1782,7 +1825,7 @@ const styles = StyleSheet.create({
   reviewPolicyText: {
     flex: 1,
     fontSize: 10.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 14,
   },
   similarHeaderRow: {
@@ -1790,7 +1833,7 @@ const styles = StyleSheet.create({
   },
   similarSub: {
     fontSize: 10.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   similarRow: {
@@ -1804,7 +1847,7 @@ const styles = StyleSheet.create({
     width: 115,
     height: 150,
     borderRadius: 6,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: colors.surfaceElevated,
   },
   similarInfoWrap: {
     marginTop: 4,
@@ -1812,11 +1855,11 @@ const styles = StyleSheet.create({
   similarBrand: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   similarName: {
     fontSize: 10,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   similarPriceRow: {
@@ -1828,12 +1871,12 @@ const styles = StyleSheet.create({
   similarPrice: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   similarDiscount: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   bottomBar: {
     position: 'absolute',
@@ -1843,9 +1886,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f3',
+    borderTopColor: colors.divider,
     gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -1859,31 +1902,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#d2d3da',
+    borderColor: colors.border,
     paddingVertical: 6,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   bottomWishlistText: {
     fontSize: 9,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     marginTop: 2,
   },
   bottomWishlistTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   bottomBagBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 6,
     gap: 6,
     paddingVertical: 12,
   },
   bottomBagBtnSuccess: {
-    backgroundColor: MyntraColors.ratingGreen,
+    backgroundColor: colors.ratingGreen,
   },
   bottomBagBtnText: {
     color: '#fff',
@@ -1895,7 +1938,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1f2937',
+    backgroundColor: isDark ? colors.surfaceElevated : '#1f2937',
     borderRadius: 6,
     paddingVertical: 12,
   },
@@ -1931,7 +1974,7 @@ const styles = StyleSheet.create({
   sizeChartCard: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -1949,11 +1992,11 @@ const styles = StyleSheet.create({
   sizeChartTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   sizeChartSub: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   sizeChartCloseBtn: {
@@ -1965,47 +2008,47 @@ const styles = StyleSheet.create({
   },
   chartTable: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 6,
     overflow: 'hidden',
     marginTop: 6,
   },
   chartRowHeader: {
     flexDirection: 'row',
-    backgroundColor: '#f9fafb',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f9fafb',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
   chartCellH: {
     flex: 1,
     textAlign: 'center',
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   chartRow: {
     flexDirection: 'row',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.border,
   },
   chartCell: {
     flex: 1,
     textAlign: 'center',
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   chartCellBold: {
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   sizeChartTip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#fff0f3',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
     padding: 8,
     borderRadius: 6,
     marginTop: 12,
@@ -2013,13 +2056,13 @@ const styles = StyleSheet.create({
   sizeChartTipText: {
     flex: 1,
     fontSize: 10.5,
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '600',
     lineHeight: 14,
   },
   sizeChartGotItBtn: {
     marginTop: 14,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 6,
     paddingVertical: 10,
     alignItems: 'center',

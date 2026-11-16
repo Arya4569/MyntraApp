@@ -1,4 +1,5 @@
 const Wishlist = require('../models/Wishlist');
+const RecommendationService = require('../services/recommendationService');
 
 exports.getWishlist = (req, res) => {
   try {
@@ -39,6 +40,8 @@ exports.addItem = (req, res) => {
       });
     }
 
+    RecommendationService.clearCache(userId);
+
     return res.status(200).json({
       success: true,
       message: 'Product added to wishlist successfully.',
@@ -68,6 +71,7 @@ exports.removeItem = (req, res) => {
     }
 
     const result = Wishlist.remove(userId, productId);
+    RecommendationService.clearCache(userId);
     return res.status(200).json({
       success: true,
       message: 'Product removed from wishlist.',

@@ -95,8 +95,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setDevOtp(result.devOtp);
         setCooldownSeconds(result.cooldownSeconds || 30);
         setStep('otp');
-        if (result.devOtp) {
+        // Only show simulated auto-fill banner if live delivery is NOT active
+        if (result.devOtp && !result.isLiveDelivery) {
           setSmsNotification(result.devOtp);
+        } else {
+          setSmsNotification(null);
         }
       } else {
         setErrorMessage(result.error || 'Failed to send OTP.');
@@ -146,8 +149,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (result.success) {
         setDevOtp(result.devOtp);
         setCooldownSeconds(result.cooldownSeconds || 30);
-        if (result.devOtp) {
+        if (result.devOtp && !result.isLiveDelivery) {
           setSmsNotification(result.devOtp);
+        } else {
+          setSmsNotification(null);
         }
       } else {
         setErrorMessage(result.error);
@@ -169,20 +174,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoading(true);
     setErrorMessage(undefined);
 
+    const isEmailAuth = mobile.includes('@');
+    const effectiveEmail = isEmailAuth ? mobile : email;
+    const effectiveMobile = isEmailAuth ? '' : mobile;
+
     try {
       let result;
-      if (password && email) {
+      if (password && effectiveEmail) {
         result = await registerWithBackend({
           fullName: name,
-          email,
-          mobileNumber: mobile,
+          email: effectiveEmail,
+          mobileNumber: effectiveMobile,
           password,
           confirmPassword: password,
           gender,
           termsAccepted: true,
         });
       } else {
-        result = await registerUser(mobile, name, email, gender);
+        result = await registerUser(
+          effectiveMobile,
+          name,
+          effectiveEmail,
+          gender
+        );
       }
 
       if (result.success) {

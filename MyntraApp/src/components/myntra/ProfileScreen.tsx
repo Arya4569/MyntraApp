@@ -12,11 +12,14 @@ import {
 } from 'react-native';
 
 import { AddressesModal } from './AddressesModal';
+import { AppearanceSetting } from './AppearanceSetting';
 import { HelpCenterModal } from './HelpCenterModal';
+import { NotificationSettingsSection } from './NotificationSettingsSection';
 import { OrdersModal } from './OrdersModal';
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { AVAILABLE_COUPONS } from '@/data/mock-data';
+import { useTheme } from '@/hooks/use-theme';
 import { storeService } from '@/services/store-service';
 import { User } from '@/types/auth';
 
@@ -45,6 +48,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   initialShowOrders = false,
   onOrdersClosed,
 }) => {
+  const { colors, isDark } = useTheme();
+
   // Dynamic order and address counts loaded from persistent store
   const [ordersCount, setOrdersCount] = useState<number>(0);
   const [addressesCount, setAddressesCount] = useState<number>(0);
@@ -478,7 +483,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* 5. Section: SUPPORT & LEGAL */}
+      {/* 5. Section: APPEARANCE & THEME */}
+      <AppearanceSetting />
+
+      {/* 5B. Section: NOTIFICATION PREFERENCES */}
+      <NotificationSettingsSection userId={user.id} />
+
+      {/* 6. Section: SUPPORT & LEGAL */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionHeaderTitle}>SUPPORT & LEGAL</Text>
 
@@ -742,6 +753,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           loadDynamicProfileCounts();
         }}
         onStartShopping={onGoToHome || onGoToWishlist}
+        onViewBag={onGoToBag}
         userId={user.id}
       />
 

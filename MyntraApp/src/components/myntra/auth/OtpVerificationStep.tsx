@@ -35,9 +35,11 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
   const [secondsRemaining, setSecondsRemaining] = useState(cooldownSeconds);
   const [showHelpAlert, setShowHelpAlert] = useState(false);
 
-  // Mask mobile number for privacy: e.g., 9876543210 -> +91 98••••••10
-  const maskedMobile =
-    mobile.length === 10
+  // Mask destination for privacy
+  const isEmail = mobile.includes('@');
+  const maskedDestination = isEmail
+    ? mobile
+    : mobile.length === 10
       ? `+91 ${mobile.slice(0, 2)}••••••${mobile.slice(8)}`
       : `+91 ${mobile}`;
 
@@ -76,20 +78,22 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
       <View style={styles.headerContainer}>
         <View style={styles.iconCircle}>
           <Ionicons
-            name="shield-checkmark"
+            name={isEmail ? 'mail-unread-outline' : 'shield-checkmark'}
             size={28}
             color={MyntraColors.primary}
           />
         </View>
 
-        <Text style={styles.title}>Verify with OTP</Text>
+        <Text style={styles.title}>
+          {isEmail ? 'Verify Email with OTP' : 'Verify with OTP'}
+        </Text>
         <Text style={styles.subtitle}>
           Enter the 4-digit verification code sent to
         </Text>
 
-        {/* Mobile Number Row with Edit Button */}
+        {/* Mobile/Email Row with Edit Button */}
         <View style={styles.mobileRow}>
-          <Text style={styles.mobileText}>{maskedMobile}</Text>
+          <Text style={styles.mobileText}>{maskedDestination}</Text>
           <TouchableOpacity
             onPress={onEditMobile}
             style={styles.editButton}
@@ -97,6 +101,12 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
             <Text style={styles.editText}>EDIT</Text>
           </TouchableOpacity>
         </View>
+
+        {isEmail && (
+          <Text style={styles.inboxHintText}>
+            📩 Check your inbox & spam folder for the code
+          </Text>
+        )}
       </View>
 
       {/* 4-Digit OTP Cells */}
@@ -395,5 +405,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: MyntraColors.textSecondary,
     lineHeight: 16,
+  },
+  inboxHintText: {
+    fontSize: 12,
+    color: MyntraColors.primary,
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+    backgroundColor: '#fff0f4',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
   },
 });

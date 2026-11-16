@@ -32,6 +32,7 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({ identifier: false, password: false });
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const isIdentifierValid = identifier.trim().length >= 3;
   const isPasswordValid = password.length >= 6;
@@ -86,13 +87,18 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
           <TextInput
             style={[
               styles.input,
+              focusedField === 'identifier' && styles.inputFocused,
               touched.identifier && !isIdentifierValid && styles.inputError,
             ]}
             placeholder="e.g. 9876543210 or name@email.com"
             placeholderTextColor={MyntraColors.textMuted}
             value={identifier}
             onChangeText={setIdentifier}
-            onBlur={() => setTouched((p) => ({ ...p, identifier: true }))}
+            onFocus={() => setFocusedField('identifier')}
+            onBlur={() => {
+              setFocusedField(null);
+              setTouched((p) => ({ ...p, identifier: true }));
+            }}
             autoCapitalize="none"
           />
           {touched.identifier && !isIdentifierValid && (
@@ -108,6 +114,7 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
           <View
             style={[
               styles.passwordRow,
+              focusedField === 'password' && styles.inputFocused,
               touched.password && !isPasswordValid && styles.inputError,
             ]}>
             <TextInput
@@ -117,7 +124,11 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
-              onBlur={() => setTouched((p) => ({ ...p, password: true }))}
+              onFocus={() => setFocusedField('password')}
+              onBlur={() => {
+                setFocusedField(null);
+                setTouched((p) => ({ ...p, password: true }));
+              }}
               autoCapitalize="none"
             />
             <TouchableOpacity
@@ -250,13 +261,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   inputGroup: {
-    marginBottom: Spacing.md,
+    marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: MyntraColors.text,
-    marginBottom: 6,
+    marginBottom: 7,
   },
   input: {
     height: 48,
@@ -267,6 +278,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: MyntraColors.text,
     backgroundColor: '#fafafa',
+    outlineStyle: 'none' as any,
+  },
+  inputFocused: {
+    borderColor: '#282c3f',
+    backgroundColor: '#ffffff',
   },
   inputError: {
     borderColor: '#ef4444',
@@ -275,7 +291,7 @@ const styles = StyleSheet.create({
   fieldError: {
     fontSize: 11,
     color: '#ef4444',
-    marginTop: 4,
+    marginTop: 5,
     fontWeight: '500',
   },
   passwordRow: {
@@ -286,16 +302,22 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 8,
     backgroundColor: '#fafafa',
-    paddingHorizontal: 12,
+    paddingLeft: 14,
+    paddingRight: 6,
   },
   passwordInput: {
     flex: 1,
     height: '100%',
     fontSize: 14,
     color: MyntraColors.text,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    outlineStyle: 'none' as any,
   },
   eyeBtn: {
-    padding: 6,
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loginBtn: {
     height: 50,

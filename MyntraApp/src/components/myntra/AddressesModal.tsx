@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Platform,
   ScrollView,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
+import { useAuth } from '@/context/AuthContext';
 import { storeService } from '@/services/store-service';
 import { DeliveryAddress } from '@/types/store';
 
@@ -24,7 +26,9 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
   visible,
   onClose,
 }) => {
+  const { user } = useAuth();
   const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Form Fields
@@ -37,18 +41,32 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
   const [addressType, setAddressType] = useState<'Home' | 'Work'>('Home');
   const [formError, setFormError] = useState<string | null>(null);
 
-
   useEffect(() => {
     let isMounted = true;
     if (visible) {
-      storeService.getAddresses().then((list) => {
-        if (isMounted) setAddresses(list);
-      });
+      storeService
+        .getAddresses()
+        .then((list) => {
+          if (isMounted) {
+            setAddresses(list);
+            setShowAddForm(false);
+            setFormError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setAddresses([]);
+            setShowAddForm(false);
+            setFormError(null);
+            setLoading(false);
+          }
+        });
     }
     return () => {
       isMounted = false;
     };
-  }, [visible]);
+  }, [visible, user?.id]);
 
   const handleSave = async () => {
     if (!name.trim() || !mobile.trim() || !pincode.trim() || !address.trim()) {
@@ -130,7 +148,12 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
               </TouchableOpacity>
             )}
 
-            {showAddForm ? (
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={MyntraColors.primary} />
+                <Text style={styles.loadingText}>Fetching saved addresses...</Text>
+              </View>
+            ) : showAddForm ? (
               <View style={styles.formContainer}>
                 <Text style={styles.formTitle}>Add New Delivery Address</Text>
                 {formError && <Text style={styles.errorText}>{formError}</Text>}
@@ -209,6 +232,23 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
                     <Text style={styles.saveBtnText}>SAVE ADDRESS</Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+            ) : addresses.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconCircle}>
+                  <Ionicons name="location-outline" size={38} color={MyntraColors.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>NO SAVED ADDRESSES YET</Text>
+                <Text style={styles.emptySubtitle}>
+                  Save your home or work delivery address for faster, one-click checkout.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowAddForm(true)}
+                  style={styles.emptyAddBtn}
+                  activeOpacity={0.85}>
+                  <Ionicons name="add" size={18} color="#fff" />
+                  <Text style={styles.emptyAddBtnText}>ADD FIRST ADDRESS</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.addressesList}>
@@ -495,5 +535,65 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: '#fff',
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: MyntraColors.textSecondary,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8e8ec',
+    marginTop: 10,
+  },
+  emptyIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#fff0f3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: MyntraColors.text,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 11.5,
+    color: MyntraColors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 20,
+    maxWidth: 280,
+  },
+  emptyAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: MyntraColors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  emptyAddBtnText: {
+    color: '#fff',
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

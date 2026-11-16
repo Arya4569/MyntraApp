@@ -50,6 +50,9 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
     confirmPassword: false,
   });
 
+  // Track focused field for clean border highlight
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
   // Sanitized values
   const cleanMobile = mobile.replace(/\D/g, '').slice(0, 10);
 
@@ -144,13 +147,18 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
         <TextInput
           style={[
             styles.input,
+            focusedField === 'fullName' && styles.inputFocused,
             touched.fullName && !isNameValid && styles.inputError,
           ]}
           placeholder="e.g. Rahul Sharma"
           placeholderTextColor={MyntraColors.textMuted}
           value={fullName}
           onChangeText={setFullName}
-          onBlur={() => setTouched((p) => ({ ...p, fullName: true }))}
+          onFocus={() => setFocusedField('fullName')}
+          onBlur={() => {
+            setFocusedField(null);
+            setTouched((p) => ({ ...p, fullName: true }));
+          }}
           autoCapitalize="words"
         />
         {touched.fullName && !isNameValid && (
@@ -168,13 +176,18 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
         <TextInput
           style={[
             styles.input,
+            focusedField === 'email' && styles.inputFocused,
             touched.email && !isEmailValid && styles.inputError,
           ]}
           placeholder="e.g. rahul.sharma@example.com"
           placeholderTextColor={MyntraColors.textMuted}
           value={email}
           onChangeText={setEmail}
-          onBlur={() => setTouched((p) => ({ ...p, email: true }))}
+          onFocus={() => setFocusedField('email')}
+          onBlur={() => {
+            setFocusedField(null);
+            setTouched((p) => ({ ...p, email: true }));
+          }}
           keyboardType="email-address"
           autoCapitalize="none"
         />
@@ -193,6 +206,7 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
         <View
           style={[
             styles.mobileInputRow,
+            focusedField === 'mobile' && styles.inputFocused,
             touched.mobile && !isMobileValid && styles.inputError,
           ]}>
           <View style={styles.countryCodeBox}>
@@ -207,7 +221,11 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
             maxLength={10}
             value={cleanMobile}
             onChangeText={setMobile}
-            onBlur={() => setTouched((p) => ({ ...p, mobile: true }))}
+            onFocus={() => setFocusedField('mobile')}
+            onBlur={() => {
+              setFocusedField(null);
+              setTouched((p) => ({ ...p, mobile: true }));
+            }}
           />
         </View>
         {touched.mobile && !isMobileValid && (
@@ -225,6 +243,7 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
         <View
           style={[
             styles.passwordRow,
+            focusedField === 'password' && styles.inputFocused,
             touched.password && !isPasswordValid && styles.inputError,
           ]}>
           <TextInput
@@ -234,7 +253,11 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
-            onBlur={() => setTouched((p) => ({ ...p, password: true }))}
+            onFocus={() => setFocusedField('password')}
+            onBlur={() => {
+              setFocusedField(null);
+              setTouched((p) => ({ ...p, password: true }));
+            }}
             autoCapitalize="none"
           />
           <TouchableOpacity
@@ -288,6 +311,7 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
         <View
           style={[
             styles.passwordRow,
+            focusedField === 'confirmPassword' && styles.inputFocused,
             touched.confirmPassword && !isConfirmValid && styles.inputError,
           ]}>
           <TextInput
@@ -297,7 +321,11 @@ export const SignUpStep: React.FC<SignUpStepProps> = ({
             secureTextEntry={!showConfirmPassword}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            onBlur={() => setTouched((p) => ({ ...p, confirmPassword: true }))}
+            onFocus={() => setFocusedField('confirmPassword')}
+            onBlur={() => {
+              setFocusedField(null);
+              setTouched((p) => ({ ...p, confirmPassword: true }));
+            }}
             autoCapitalize="none"
           />
           <TouchableOpacity
@@ -480,13 +508,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   inputGroup: {
-    marginBottom: Spacing.md,
+    marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: MyntraColors.text,
-    marginBottom: 6,
+    marginBottom: 7,
   },
   requiredStar: {
     color: MyntraColors.primary,
@@ -500,6 +528,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: MyntraColors.text,
     backgroundColor: '#fafafa',
+    outlineStyle: 'none' as any,
+  },
+  inputFocused: {
+    borderColor: '#282c3f',
+    backgroundColor: '#ffffff',
   },
   inputError: {
     borderColor: '#ef4444',
@@ -508,7 +541,7 @@ const styles = StyleSheet.create({
   fieldError: {
     fontSize: 11,
     color: '#ef4444',
-    marginTop: 4,
+    marginTop: 5,
     fontWeight: '500',
   },
   mobileInputRow: {
@@ -543,6 +576,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     fontSize: 14,
     color: MyntraColors.text,
+    outlineStyle: 'none' as any,
   },
   passwordRow: {
     height: 48,
@@ -552,20 +586,27 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 8,
     backgroundColor: '#fafafa',
-    paddingHorizontal: 12,
+    paddingLeft: 14,
+    paddingRight: 6,
   },
   passwordInput: {
     flex: 1,
     height: '100%',
     fontSize: 14,
     color: MyntraColors.text,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    outlineStyle: 'none' as any,
   },
   eyeBtn: {
-    padding: 6,
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   strengthContainer: {
-    marginTop: 6,
-    gap: 4,
+    marginTop: 8,
+    marginBottom: 2,
+    gap: 5,
   },
   strengthBarBackground: {
     height: 4,

@@ -127,7 +127,50 @@ const server = app.listen(5099, '127.0.0.1', async () => {
     });
     console.log('8. Pre-seeded demo user login:', demoLogin.status === 200 ? 'PASS' : 'FAIL');
 
-    console.log('\nALL 8 BACKEND API TESTS PASSED! 🎉');
+    // 9. Initial theme preference check (Default 'system')
+    const prefRes1 = await request('/api/auth/preferences', 'GET', null, userToken);
+    const isPref1Pass =
+      prefRes1.status === 200 &&
+      prefRes1.data.success &&
+      prefRes1.data.preferences &&
+      prefRes1.data.preferences.themePreference === 'system';
+    console.log('9. GET /api/auth/preferences default system:', isPref1Pass ? 'PASS' : 'FAIL');
+
+    // 10. Update theme preference to dark
+    const updatePrefRes = await request(
+      '/api/auth/preferences',
+      'PUT',
+      { themePreference: 'dark' },
+      userToken
+    );
+    const isUpdatePrefPass =
+      updatePrefRes.status === 200 &&
+      updatePrefRes.data.success &&
+      updatePrefRes.data.preferences.themePreference === 'dark' &&
+      updatePrefRes.data.user.themePreference === 'dark';
+    console.log('10. PUT /api/auth/preferences to dark:', isUpdatePrefPass ? 'PASS' : 'FAIL');
+
+    // 11. Retrieve updated theme preference across sessions
+    const prefRes2 = await request('/api/auth/preferences', 'GET', null, userToken);
+    const isPref2Pass =
+      prefRes2.status === 200 &&
+      prefRes2.data.preferences.themePreference === 'dark';
+    console.log('11. Cross-session theme preference persisted:', isPref2Pass ? 'PASS' : 'FAIL');
+
+    // 12. Reject invalid theme preference
+    const invalidPrefRes = await request(
+      '/api/auth/preferences',
+      'PUT',
+      { themePreference: 'neon-cyberpunk' },
+      userToken
+    );
+    console.log('12. Invalid theme preference rejected (400):', invalidPrefRes.status === 400 ? 'PASS' : 'FAIL');
+
+    // 13. Unauthorized preference request rejected
+    const unauthPrefRes = await request('/api/auth/preferences', 'GET');
+    console.log('13. Unauthorized preference access rejected (401):', unauthPrefRes.status === 401 ? 'PASS' : 'FAIL');
+
+    console.log('\nALL 13 BACKEND AUTH & PREFERENCE TESTS PASSED! 🎉');
   } catch (err) {
     console.error('Test failed with error:', err);
   } finally {

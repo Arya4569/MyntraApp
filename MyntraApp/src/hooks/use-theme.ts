@@ -1,14 +1,53 @@
-/**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
- */
+import { useContext } from 'react';
+import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  Colors,
+  ResolvedTheme,
+  ThemeMode,
+  ThemeTokens,
+} from '@/constants/theme';
+import { ThemeContext } from '@/context/ThemeContext';
 
-export function useTheme() {
+export interface UseThemeReturn extends ThemeTokens {
+  colors: ThemeTokens;
+  isDark: boolean;
+  themeMode: ThemeMode;
+  activeTheme: ResolvedTheme;
+  systemScheme: ResolvedTheme;
+  isLoadingTheme: boolean;
+  setThemeMode: (mode: ThemeMode, syncBackend?: boolean) => Promise<void>;
+}
+
+export function useTheme(): UseThemeReturn {
+  const context = useContext(ThemeContext);
   const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
 
-  return Colors[theme];
+  if (context) {
+    return {
+      ...context.colors,
+      colors: context.colors,
+      isDark: context.isDark,
+      themeMode: context.themeMode,
+      activeTheme: context.activeTheme,
+      systemScheme: context.systemScheme,
+      isLoadingTheme: context.isLoadingTheme,
+      setThemeMode: context.setThemeMode,
+    };
+  }
+
+  // Fallback if rendered outside ThemeProvider (e.g., isolated test environments)
+  const activeTheme: ResolvedTheme = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[activeTheme];
+
+  return {
+    ...colors,
+    colors,
+    isDark: activeTheme === 'dark',
+    themeMode: 'system',
+    activeTheme,
+    systemScheme: activeTheme,
+    isLoadingTheme: false,
+    setThemeMode: async () => {},
+  };
 }

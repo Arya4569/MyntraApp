@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface SearchBarProps {
   value: string;
@@ -30,27 +31,35 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   placeholder = 'Search for products, brands and more',
   editable = true,
 }) => {
+  const { colors, isDark } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
       <TouchableOpacity
         activeOpacity={onPress ? 0.9 : 1}
         onPress={onPress}
-        style={styles.inputContainer}>
+        style={[
+          styles.inputContainer,
+          {
+            backgroundColor: colors.inputBackground,
+            borderColor: colors.cardBorder,
+          },
+        ]}>
         {/* Search Icon */}
         <Ionicons
           name="search-outline"
           size={20}
-          color={MyntraColors.textMuted}
+          color={colors.textMuted}
           style={styles.searchIcon}
         />
 
         {/* Text Input */}
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.text }]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={MyntraColors.textMuted}
+          placeholderTextColor={colors.placeholder}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"

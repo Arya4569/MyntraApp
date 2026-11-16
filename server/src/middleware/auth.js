@@ -6,15 +6,20 @@ const JWT_SECRET =
 
 const requireAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
+  let token = null;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      success: false,
-      error: 'Authorization header missing or invalid. Please log in.',
-    });
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authorization token missing or invalid. Please log in.',
+    });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -45,7 +50,34 @@ const requireAuth = (req, res, next) => {
   }
 };
 
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  let token = null;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
+    return next();
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = User.findById(decoded.id);
+    if (user) {
+      req.user = User.sanitize(user);
+      req.token = token;
+    }
+  } catch (err) {
+    // Silently continue for optional auth
+  }
+  next();
+};
+
 module.exports = {
   requireAuth,
+  optionalAuth,
   JWT_SECRET,
 };

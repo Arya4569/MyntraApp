@@ -11,11 +11,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { Product, PRODUCTS } from '@/data/mock-data';
+import { useTheme } from '@/hooks/use-theme';
 import { storeService } from '@/services/store-service';
 
 export type WishlistSortOption =
@@ -51,6 +53,9 @@ export const WishlistScreen: React.FC<WishlistScreenProps> = ({
   onClearWishlist,
   allProducts = PRODUCTS,
 }) => {
+  const { width } = useWindowDimensions();
+  const cardWidth = width >= 1100 ? '23.8%' : (width >= 750 ? '31.8%' : '48.5%');
+
   // 1. Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -80,6 +85,9 @@ export const WishlistScreen: React.FC<WishlistScreenProps> = ({
 
   // 5. Clear wishlist confirmation modal
   const [isClearConfirmVisible, setIsClearConfirmVisible] = useState(false);
+
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   // Load saved collections mapping
   useEffect(() => {
@@ -638,7 +646,7 @@ export const WishlistScreen: React.FC<WishlistScreenProps> = ({
               const hasDiscount = product.originalPrice > product.price;
 
               return (
-                <View key={product.id} style={styles.itemCard}>
+                <View key={product.id} style={[styles.itemCard, { width: cardWidth }]}>
                   {/* Image & Quick Removal Button */}
                   <TouchableOpacity
                     activeOpacity={0.92}
@@ -1231,10 +1239,10 @@ export const WishlistScreen: React.FC<WishlistScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafbfc',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -1251,9 +1259,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -1266,12 +1274,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.8,
   },
   headerCount: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
     marginTop: 1,
     letterSpacing: 0.5,
@@ -1289,16 +1297,16 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   searchContainer: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: Spacing.md,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1307,13 +1315,13 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: MyntraColors.text,
+    color: colors.text,
     paddingVertical: 2,
   },
   collectionsBar: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   collectionsScroll: {
     paddingHorizontal: Spacing.md,
@@ -1324,29 +1332,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
     borderWidth: 1,
     borderColor: 'transparent',
   },
   collectionChipActive: {
-    backgroundColor: '#fff0f3',
-    borderColor: MyntraColors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
+    borderColor: colors.primary,
   },
   collectionChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   collectionChipTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   controlsBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   controlBtn: {
     flex: 1,
@@ -1359,24 +1367,24 @@ const styles = StyleSheet.create({
   controlDivider: {
     width: 1,
     height: 20,
-    backgroundColor: MyntraColors.divider,
+    backgroundColor: colors.divider,
   },
   controlBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.4,
   },
   filterDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
   },
   activeFiltersBar: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   activeFiltersScroll: {
     paddingHorizontal: Spacing.md,
@@ -1388,9 +1396,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: MyntraColors.primary,
+    borderColor: colors.primary,
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1398,7 +1406,7 @@ const styles = StyleSheet.create({
   activeFilterText: {
     fontSize: 11,
     fontWeight: '600',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   clearAllFiltersBtn: {
     paddingHorizontal: 8,
@@ -1407,7 +1415,7 @@ const styles = StyleSheet.create({
   clearAllFiltersText: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
   },
   grid: {
     flexDirection: 'row',
@@ -1418,17 +1426,17 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     width: '48.5%',
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: MyntraColors.cardBorder,
+    borderColor: colors.cardBorder,
     marginBottom: 6,
   },
   imageContainer: {
     width: '100%',
     aspectRatio: 3 / 4,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.surfaceElevated,
     position: 'relative',
   },
   image: {
@@ -1442,7 +1450,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1458,7 +1466,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1468,7 +1476,7 @@ const styles = StyleSheet.create({
     left: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.92)' : 'rgba(255, 255, 255, 0.92)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -1477,16 +1485,16 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   ratingDivider: {
     fontSize: 8,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
   },
   ratingCountText: {
     fontSize: 9,
     fontWeight: '600',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   outOfStockBadge: {
     position: 'absolute',
@@ -1530,7 +1538,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
@@ -1539,7 +1547,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   priceRow: {
@@ -1552,11 +1560,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   originalPrice: {
     fontSize: 10,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
   discountBadge: {
@@ -1569,7 +1577,7 @@ const styles = StyleSheet.create({
   },
   sizeIndicatorText: {
     fontSize: 10,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '500',
   },
   moveToBagBtn: {
@@ -1578,14 +1586,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.divider,
     paddingVertical: 10,
-    backgroundColor: '#fff7f9',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff7f9',
   },
   moveToBagText: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
     letterSpacing: 0.6,
   },
   noMatchContainer: {
@@ -1597,13 +1605,13 @@ const styles = StyleSheet.create({
   noMatchTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     marginTop: 12,
     letterSpacing: 0.6,
   },
   noMatchSubtitle: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 18,
@@ -1611,13 +1619,13 @@ const styles = StyleSheet.create({
   },
   resetFiltersBtn: {
     marginTop: 18,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
   },
   resetFiltersBtnText: {
-    color: MyntraColors.white,
+    color: '#fff',
     fontSize: 12,
     fontWeight: '800',
   },
@@ -1626,13 +1634,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: Spacing.xxl,
     paddingTop: 40,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.background,
   },
   emptyHeartCircle: {
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#fff0f3',
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
@@ -1640,12 +1648,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.8,
   },
   emptySubtitle: {
     fontSize: 13,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 19,
@@ -1653,25 +1661,25 @@ const styles = StyleSheet.create({
   },
   exploreButton: {
     marginTop: Spacing.xl,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 28,
     paddingVertical: 13,
     borderRadius: 24,
-    shadowColor: MyntraColors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 3,
   },
   exploreButtonText: {
-    color: MyntraColors.white,
+    color: '#fff',
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.8,
   },
   recommendationSection: {
     marginTop: Spacing.lg,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     paddingTop: Spacing.md,
   },
   recHeaderRow: {
@@ -1681,20 +1689,20 @@ const styles = StyleSheet.create({
   recSectionTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   recSectionSubtitle: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   bottomRecSection: {
     marginTop: Spacing.lg,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     paddingVertical: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: MyntraColors.divider,
+    borderTopColor: colors.divider,
   },
   bottomRecScroll: {
     paddingHorizontal: Spacing.md,
@@ -1703,16 +1711,16 @@ const styles = StyleSheet.create({
   },
   recCard: {
     width: 140,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: MyntraColors.cardBorder,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
   },
   recImageWrapper: {
     width: '100%',
     height: 160,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.surfaceElevated,
     position: 'relative',
   },
   recImage: {
@@ -1726,7 +1734,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1736,17 +1744,17 @@ const styles = StyleSheet.create({
   recBrand: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   recName: {
     fontSize: 10,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   recPrice: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     marginTop: 3,
   },
   modalOverlay: {
@@ -1755,7 +1763,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sizeSheetCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: Spacing.lg,
@@ -1767,7 +1775,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   sizeSheetProductRow: {
     flexDirection: 'row',
@@ -1778,7 +1786,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 80,
     borderRadius: 6,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.surfaceElevated,
   },
   sizeSheetDetails: {
     flex: 1,
@@ -1787,12 +1795,12 @@ const styles = StyleSheet.create({
   sizeSheetBrand: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     textTransform: 'uppercase',
   },
   sizeSheetName: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   sizeSheetPriceRow: {
@@ -1804,11 +1812,11 @@ const styles = StyleSheet.create({
   sizeSheetPrice: {
     fontSize: 14,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   sizeSheetOrigPrice: {
     fontSize: 11,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
   sizeSheetDiscount: {
@@ -1831,13 +1839,13 @@ const styles = StyleSheet.create({
   sizeSectionTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   sizeFitGuide: {
     fontSize: 11,
     fontWeight: '600',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   sizeErrorAlert: {
     fontSize: 11,
@@ -1855,23 +1863,23 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   sizePillSelected: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff0f3',
+    borderColor: colors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
   },
   sizePillText: {
     fontSize: 13,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   sizePillTextSelected: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   colorSection: {
@@ -1887,19 +1895,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: colors.border,
   },
   colorPillSelected: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff0f3',
+    borderColor: colors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
   },
   colorPillText: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   colorPillTextSelected: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '700',
   },
   confirmBagBtn: {
@@ -1907,7 +1915,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 8,
     marginTop: Spacing.sm,
@@ -1915,11 +1923,11 @@ const styles = StyleSheet.create({
   confirmBagBtnText: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.white,
+    color: '#fff',
     letterSpacing: 0.8,
   },
   menuSheetCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: Spacing.lg,
@@ -1930,12 +1938,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   menuSheetTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   menuItem: {
     flexDirection: 'row',
@@ -1946,23 +1954,23 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 13,
     fontWeight: '600',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   menuCollectionHeader: {
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: MyntraColors.divider,
+    borderTopColor: colors.divider,
     marginBottom: 4,
   },
   menuCollectionTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.6,
   },
   sheetCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: Spacing.lg,
@@ -1973,12 +1981,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: MyntraColors.divider,
+    borderBottomColor: colors.divider,
   },
   sheetTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   sortOptionRow: {
@@ -1987,19 +1995,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: colors.border,
   },
   sortOptionText: {
     fontSize: 13,
     fontWeight: '600',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   sortOptionTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   filterSheetCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: Spacing.lg,
@@ -2014,7 +2022,7 @@ const styles = StyleSheet.create({
   filterBlockTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.8,
     marginBottom: 8,
   },
@@ -2027,21 +2035,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
     borderWidth: 1,
     borderColor: 'transparent',
   },
   filterPillActive: {
-    backgroundColor: '#fff0f3',
-    borderColor: MyntraColors.primary,
+    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
+    borderColor: colors.primary,
   },
   filterPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   filterPillTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   filterFooter: {
@@ -2049,7 +2057,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: MyntraColors.divider,
+    borderTopColor: colors.divider,
   },
   filterClearBtn: {
     flex: 1,
@@ -2058,17 +2066,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: MyntraColors.cardBorder,
+    borderColor: colors.cardBorder,
   },
   filterClearBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.6,
   },
   filterApplyBtn: {
     flex: 2,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2077,11 +2085,11 @@ const styles = StyleSheet.create({
   filterApplyBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.white,
+    color: '#fff',
     letterSpacing: 0.6,
   },
   confirmCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     marginHorizontal: Spacing.lg,
     borderRadius: 16,
     padding: Spacing.xl,
@@ -2101,11 +2109,11 @@ const styles = StyleSheet.create({
   confirmTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   confirmSubtitle: {
     fontSize: 13,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 18,
@@ -2121,13 +2129,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: MyntraColors.cardBorder,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
   },
   confirmCancelText: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   confirmDeleteBtn: {
     flex: 1,
@@ -2139,6 +2147,6 @@ const styles = StyleSheet.create({
   confirmDeleteText: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.white,
+    color: '#fff',
   },
 });

@@ -30,6 +30,30 @@ export const BankOffersModal: React.FC<BankOffersModalProps> = ({
 }) => {
   const [remoteOffers, setRemoteOffers] = useState<BankOffer[]>([]);
   const [loading, setLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCopyCode = async (code: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else if (typeof document !== 'undefined') {
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+    } catch (e) {
+      console.warn('Clipboard write failed:', e);
+    }
+    setCopiedCode(code);
+    setTimeout(() => {
+      setCopiedCode(null);
+    }, 2500);
+  };
 
   useEffect(() => {
     if (visible && (!initialOffers || initialOffers.length === 0)) {
@@ -116,10 +140,23 @@ export const BankOffersModal: React.FC<BankOffersModalProps> = ({
                 <Text style={styles.offerDesc}>{offer.description}</Text>
 
                 <View style={styles.cardFooter}>
-                  <View style={styles.codePill}>
-                    <Ionicons name="pricetag" size={12} color={MyntraColors.primary} />
-                    <Text style={styles.codeText}>{offer.code}</Text>
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.codePill, copiedCode === offer.code && { backgroundColor: '#e6f9ed' }]}
+                    onPress={() => handleCopyCode(offer.code)}
+                    activeOpacity={0.7}>
+                    <Ionicons
+                      name={copiedCode === offer.code ? 'checkmark-circle' : 'pricetag'}
+                      size={12}
+                      color={copiedCode === offer.code ? '#10b981' : MyntraColors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.codeText,
+                        copiedCode === offer.code && { color: '#10b981', fontWeight: '800' },
+                      ]}>
+                      {copiedCode === offer.code ? 'COPIED ✓' : offer.code}
+                    </Text>
+                  </TouchableOpacity>
                   <Text style={styles.minSpendText}>
                     {offer.minSpend} • {offer.validTill}
                   </Text>

@@ -10,6 +10,7 @@ import {
   RegisterResult,
   SendOtpResult,
   User,
+  UserPreferences,
   VerifyOtpResult,
 } from '@/types/auth';
 
@@ -48,17 +49,17 @@ const getApiBaseUrl = (): string => {
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  // If running in Expo Go on physical device or emulator, extract the computer's LAN IP from hostUri
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const host = hostUri.split(':')[0];
-    if (host) {
-      return `http://${host}:5000/api`;
+  if (Platform.OS !== 'web') {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const host = hostUri.split(':')[0];
+      if (host) {
+        return `http://${host}:5000/api`;
+      }
     }
-  }
-  // Android Emulator uses 10.0.2.2 to access host localhost
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api';
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:5000/api';
+    }
   }
   return 'http://localhost:5000/api';
 };
@@ -125,7 +126,7 @@ class AuthService {
       };
     }
 
-    if (!cleanMobile || !/^[6-9]\d{9}$/.test(cleanMobile)) {
+    if (cleanMobile && !/^[6-9]\d{9}$/.test(cleanMobile)) {
       return {
         success: false,
         error: 'Please enter a valid 10-digit Indian mobile number.',
@@ -318,22 +319,34 @@ class AuthService {
   }
 
   /**
-   * Initiate OTP request with rate limiting and expiration
+   * Initiate OTP request with rate limiting and expiration (Email or Mobile)
    */
-  async sendOtp(mobile: string): Promise<SendOtpResult> {
-    const cleanNumber = mobile.trim().replace(/\D/g, '');
+  async sendOtp(identifier: string): Promise<SendOtpResult> {
+    const raw = (identifier || '').trim();
+    const isEmail = raw.includes('@');
+    const cleanKey = isEmail ? raw.toLowerCase() : raw.replace(/\D/g, '');
 
-    // Validate 10-digit Indian mobile number
-    if (!/^[6-9]\d{9}$/.test(cleanNumber)) {
-      return {
-        success: false,
-        isExistingUser: false,
-        error: 'Please enter a valid 10-digit Indian mobile number.',
-      };
+    // Validate format
+    if (isEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanKey)) {
+        return {
+          success: false,
+          isExistingUser: false,
+          error: 'Please enter a valid email address.',
+        };
+      }
+    } else {
+      if (!/^[6-9]\d{9}$/.test(cleanKey)) {
+        return {
+          success: false,
+          isExistingUser: false,
+          error: 'Please enter a valid 10-digit Indian mobile number.',
+        };
+      }
     }
 
     const now = Date.now();
-    const existingOtp = activeOtps.get(cleanNumber);
+    const existingOtp = activeOtps.get(cleanKey);
 
     // 30 seconds cooldown between resends
     if (existingOtp && now - existingOtp.lastSentAt < 30 * 1000) {
@@ -342,45 +355,92 @@ class AuthService {
       );
       return {
         success: false,
-        isExistingUser: await this.isUserRegistered(cleanNumber),
+        isExistingUser: await this.isUserRegistered(cleanKey),
         error: `Please wait ${remainingSeconds}s before requesting a new OTP.`,
         cooldownSeconds: remainingSeconds,
       };
     }
 
-    // Generate authentic 4-digit numeric OTP matching real Myntra
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    // Call backend real-time send-otp endpoint
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: cleanKey }),
+      });
 
-    // Valid for 5 minutes
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          activeOtps.set(cleanKey, {
+            mobile: cleanKey,
+            code: data.devOtp || '',
+            expiresAt: now + 5 * 60 * 1000,
+            lastSentAt: now,
+            attempts: 0,
+          });
+
+          return {
+            success: true,
+            isExistingUser: !data.isNewUser,
+            devOtp: data.devOtp, // Only set if backend is simulated
+            cooldownSeconds: data.cooldownSeconds || 30,
+            deliveryType: data.deliveryType,
+            target: data.target,
+            isLiveDelivery: Boolean(data.live),
+          };
+        } else {
+          return {
+            success: false,
+            isExistingUser: false,
+            error: data.error || 'Failed to dispatch OTP.',
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Backend send-otp failed, falling back to local simulation:', err);
+    }
+
+    // Fallback: local simulation if server offline
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
     const expiresAt = now + 5 * 60 * 1000;
 
-    activeOtps.set(cleanNumber, {
-      mobile: cleanNumber,
+    activeOtps.set(cleanKey, {
+      mobile: cleanKey,
       code,
       expiresAt,
       lastSentAt: now,
       attempts: 0,
     });
 
-    const isExistingUser = await this.isUserRegistered(cleanNumber);
+    const isExistingUser = await this.isUserRegistered(cleanKey);
 
-    // Attempt live SMS dispatch if Fast2SMS/Twilio or browser notification is available
-    await this.dispatchLiveSms(cleanNumber, code);
+    // Attempt live SMS dispatch if Fast2SMS or browser notification is available
+    await this.dispatchLiveSms(cleanKey, code);
 
     return {
       success: true,
       isExistingUser,
       devOtp: code,
       cooldownSeconds: 30,
+      isLiveDelivery: false,
     };
   }
 
   /**
    * Dispatch OTP notification safely without exposing private API keys in client bundle
    */
-  private async dispatchLiveSms(_mobile: string, code: string): Promise<boolean> {
+  private async dispatchLiveSms(mobile: string, code: string): Promise<boolean> {
+    // 1. Dispatch real SMS via backend (Fast2SMS)
+    try {
+      fetch(`${getApiBaseUrl()}/auth/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile, otp: code }),
+      }).catch(() => {});
+    } catch {}
 
-    // Trigger browser Web Notification if allowed
+    // 2. Trigger browser Web Notification if allowed
     try {
       if (typeof window !== 'undefined' && 'Notification' in window) {
         if (Notification.permission === 'granted') {
@@ -391,17 +451,67 @@ class AuthService {
       }
     } catch {}
 
-    return false;
+    return true;
   }
 
   /**
-   * Verify the OTP entered by user
+   * Verify the OTP entered by user (Email or Mobile)
    */
-  async verifyOtp(mobile: string, enteredOtp: string): Promise<VerifyOtpResult> {
-    const cleanNumber = mobile.trim().replace(/\D/g, '');
-    const cleanOtp = enteredOtp.trim();
+  async verifyOtp(identifier: string, enteredOtp: string): Promise<VerifyOtpResult> {
+    const raw = (identifier || '').trim();
+    const isEmail = raw.includes('@');
+    const cleanKey = isEmail ? raw.toLowerCase() : raw.replace(/\D/g, '');
+    const cleanOtp = (enteredOtp || '').trim();
 
-    const record = activeOtps.get(cleanNumber);
+    // Call backend OTP login endpoint to get real JWT token and isolated user profile
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/otp-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: cleanKey, otp: cleanOtp }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          activeOtps.delete(cleanKey);
+          if (data.isNewUser) {
+            return {
+              success: true,
+              isNewUser: true,
+            };
+          }
+
+          if (data.user && data.token) {
+            const user: User = data.user;
+            const token: string = data.token;
+            await this.saveSession(user, token);
+            return {
+              success: true,
+              isNewUser: false,
+              user,
+            };
+          }
+        } else {
+          return {
+            success: false,
+            isNewUser: false,
+            error: data.error || 'Invalid OTP code.',
+          };
+        }
+      } else {
+        const data = await response.json().catch(() => ({}));
+        return {
+          success: false,
+          isNewUser: false,
+          error: data.error || 'Invalid OTP code.',
+        };
+      }
+    } catch (apiErr) {
+      console.warn('Backend otp-login unavailable, checking local registry:', apiErr);
+    }
+
+    const record = activeOtps.get(cleanKey);
 
     if (!record) {
       return {
@@ -413,7 +523,7 @@ class AuthService {
 
     // Check expiration
     if (Date.now() > record.expiresAt) {
-      activeOtps.delete(cleanNumber);
+      activeOtps.delete(cleanKey);
       return {
         success: false,
         isNewUser: false,
@@ -423,7 +533,7 @@ class AuthService {
 
     // Check rate limit on attempts (max 4 tries)
     if (record.attempts >= 4) {
-      activeOtps.delete(cleanNumber);
+      activeOtps.delete(cleanKey);
       return {
         success: false,
         isNewUser: false,
@@ -443,16 +553,18 @@ class AuthService {
       return {
         success: false,
         isNewUser: false,
-        error: `Invalid OTP code. (${remaining} ${remaining === 1 ? 'attempt' : 'attempts'} remaining)`,
+        error: `Invalid OTP code. (${remaining} ${
+          remaining === 1 ? 'attempt' : 'attempts'
+        } remaining)`,
       };
     }
 
     // OTP is verified successfully -> clear it from active map
-    activeOtps.delete(cleanNumber);
+    activeOtps.delete(cleanKey);
 
-    // Check if user exists in the registry
+    // Fallback: Check if user exists in the local registry
     const registry = await this.getUsersRegistry();
-    const existingUser = registry[cleanNumber];
+    const existingUser = registry[cleanKey];
 
     if (existingUser) {
       // Existing user -> automatically create and persist session
@@ -668,6 +780,76 @@ class AuthService {
       return updatedUser;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Fetch authenticated user preferences from backend
+   */
+  async getPreferences(): Promise<UserPreferences | null> {
+    try {
+      const token = await this.getToken();
+      if (!token) return null;
+
+      const res = await fetch(`${getApiBaseUrl()}/auth/preferences`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.success && data.preferences) {
+        return data.preferences;
+      }
+      return null;
+    } catch (e) {
+      console.warn('Failed to fetch preferences from backend:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Update user preferences on backend and sync local session
+   */
+  async updatePreferences(
+    preferences: Partial<UserPreferences>
+  ): Promise<boolean> {
+    try {
+      const token = await this.getToken();
+      const currentUser = await this.getSession();
+
+      if (currentUser && preferences.themePreference) {
+        const updatedUser: User = {
+          ...currentUser,
+          themePreference: preferences.themePreference,
+        };
+        await this.saveSession(updatedUser, token || undefined);
+      }
+
+      if (!token) return true; // Saved locally for guest or offline
+
+      const res = await fetch(`${getApiBaseUrl()}/auth/preferences`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(preferences),
+      });
+
+      if (!res.ok) {
+        console.warn('Backend updatePreferences returned status:', res.status);
+        return false;
+      }
+
+      const data = await res.json();
+      return Boolean(data.success);
+    } catch (e) {
+      console.warn('Backend updatePreferences failed (offline or network error):', e);
+      return false;
     }
   }
 }

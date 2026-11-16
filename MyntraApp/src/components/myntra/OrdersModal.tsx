@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -16,14 +17,22 @@ import {
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { storeService } from '@/services/store-service';
-import { Order } from '@/types/store';
+import {
+  Order,
+  OrderFilterOptions,
+  OrderPaginationMeta,
+  ReorderSummary,
+} from '@/types/store';
 
 export type OrderFilterTab = 'all' | 'active' | 'delivered' | 'cancelled';
+export type OrderDateRange = 'all' | 'last30days' | 'last6months' | 'thisyear';
+export type OrderSortBy = 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc';
 
 export interface OrdersModalProps {
   visible: boolean;
   onClose: () => void;
   onStartShopping: () => void;
+  onViewBag?: () => void;
   userId?: string;
   initialOrderId?: string;
 }
@@ -48,22 +57,43 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
   visible,
   onClose,
   onStartShopping,
+  onViewBag,
   userId,
   initialOrderId,
 }) => {
-  // Orders state
+  // Orders & Pagination State
   const [orders, setOrders] = useState<Order[]>([]);
+  const [pagination, setPagination] = useState<OrderPaginationMeta>({
+    page: 1,
+    limit: 8,
+    total: 0,
+    totalPages: 1,
+    hasMore: false,
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Active filter tab & search query
+  // Filters, Sort & Search State
   const [activeTab, setActiveTab] = useState<OrderFilterTab>('all');
+  const [dateRange, setDateRange] = useState<OrderDateRange>('all');
+  const [sortBy, setSortBy] = useState<OrderSortBy>('date_desc');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFiltersBar, setShowFiltersBar] = useState(false);
 
   // Selected Order for expanded details / tracking
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [detailsModalOrder, setDetailsModalOrder] = useState<Order | null>(null);
+
+  // Reorder State
+  const [isReorderingId, setIsReorderingId] = useState<string | null>(null);
+  const [reorderFeedback, setReorderFeedback] = useState<ReorderSummary | null>(null);
+
+  // Invoice State
+  const [isDownloadingInvoiceId, setIsDownloadingInvoiceId] = useState<string | null>(null);
+  const [invoiceDownloadProgress, setInvoiceDownloadProgress] = useState<{ [orderId: string]: number }>({});
+  const [isRetryingPaymentId, setIsRetryingPaymentId] = useState<string | null>(null);
 
   // Cancel order modal
   const [cancelOrderTarget, setCancelOrderTarget] = useState<Order | null>(null);
@@ -74,6 +104,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
   const [returnOrderTarget, setReturnOrderTarget] = useState<Order | null>(null);
   const [returnType, setReturnType] = useState<'return' | 'exchange'>('return');
   const [selectedReturnReason, setSelectedReturnReason] = useState(RETURN_REASONS[0]);
+  const [exchangeSize, setExchangeSize] = useState<string>('L');
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
 
   // User feedback toast/banner
@@ -86,31 +117,65 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
     setFeedbackMessage({ text, isError });
     setTimeout(() => {
       setFeedbackMessage(null);
-    }, 3500);
+    }, 4500);
   }, []);
 
-  // Load orders from storage
-  const loadOrders = useCallback(async (isPullRefresh = false) => {
-    if (isPullRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-    setLoadError(null);
-
-    try {
-      const data = await storeService.getOrders(userId);
-      setOrders(data);
-      if (isPullRefresh) {
-        showFeedback('Order list updated');
+  // Fetch orders from backend with server-side pagination, sorting & filters
+  const fetchOrders = useCallback(
+    async (
+      pageToLoad = 1,
+      isPullRefresh = false,
+      tab = activeTab,
+      range = dateRange,
+      sort = sortBy,
+      query = searchQuery
+    ) => {
+      if (pageToLoad === 1) {
+        if (isPullRefresh) {
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
+      } else {
+        setIsLoadingMore(true);
       }
-    } catch {
-      setLoadError('Unable to load orders. Please try again.');
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [userId, showFeedback]);
+      setLoadError(null);
+
+      try {
+        const filterOptions: OrderFilterOptions = {
+          page: pageToLoad,
+          limit: 8,
+          status: tab,
+          sortBy: sort,
+          dateRange: range,
+          search: query.trim() || undefined,
+        };
+
+        const res = await storeService.getOrderHistory(filterOptions);
+        if (pageToLoad === 1) {
+          setOrders(res.orders);
+        } else {
+          setOrders((prev) => {
+            const existingIds = new Set(prev.map((o) => o.id));
+            const newUnique = res.orders.filter((o) => !existingIds.has(o.id));
+            return [...prev, ...newUnique];
+          });
+        }
+        setPagination(res.pagination);
+
+        if (isPullRefresh) {
+          showFeedback('Orders updated successfully');
+        }
+      } catch (err: any) {
+        setLoadError(err?.message || 'Unable to load orders. Please try again.');
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [activeTab, dateRange, sortBy, searchQuery, showFeedback]
+  );
 
   // Reset modal state when visible changes
   const [prevVisible, setPrevVisible] = useState(visible);
@@ -121,33 +186,18 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
       setExpandedOrderId(null);
       setCancelOrderTarget(null);
       setReturnOrderTarget(null);
+      setReorderFeedback(null);
       setSearchQuery('');
     }
   }
 
-  // Load when visible via async external query
+  // Reload when visible or when filters/sorting/search change
   useEffect(() => {
-    let isMounted = true;
     if (visible) {
-      storeService
-        .getOrders(userId)
-        .then((data) => {
-          if (isMounted) {
-            setOrders(data);
-            setIsLoading(false);
-          }
-        })
-        .catch(() => {
-          if (isMounted) {
-            setLoadError('Unable to load orders. Please try again.');
-            setIsLoading(false);
-          }
-        });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchOrders(1, false, activeTab, dateRange, sortBy, searchQuery);
     }
-    return () => {
-      isMounted = false;
-    };
-  }, [visible, userId]);
+  }, [visible, activeTab, dateRange, sortBy, searchQuery, fetchOrders]);
 
   // Support opening initialOrderId if specified
   const [prevInitialOrderId, setPrevInitialOrderId] = useState(initialOrderId);
@@ -161,7 +211,14 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
     }
   }
 
-  // Status helper checkers
+  // Load next page
+  const handleLoadMore = () => {
+    if (!isLoadingMore && pagination.hasMore) {
+      fetchOrders(pagination.page + 1, false, activeTab, dateRange, sortBy, searchQuery);
+    }
+  };
+
+  // Helper status checkers
   const isOrderActive = (status: Order['status']) => {
     return (
       status === 'Placed' ||
@@ -173,159 +230,6 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
 
   const isOrderDelivered = (status: Order['status']) => {
     return status === 'Delivered';
-  };
-
-  const isOrderCancelledOrReturned = (status: Order['status']) => {
-    return status === 'Cancelled' || status === 'Returned';
-  };
-
-  // Counts for tabs
-  const counts = useMemo(() => {
-    return {
-      all: orders.length,
-      active: orders.filter((o) => isOrderActive(o.status)).length,
-      delivered: orders.filter((o) => isOrderDelivered(o.status)).length,
-      cancelled: orders.filter((o) => isOrderCancelledOrReturned(o.status)).length,
-    };
-  }, [orders]);
-
-  // Filtered orders list
-  const filteredOrders = useMemo(() => {
-    let result = orders;
-
-    // Filter by tab
-    if (activeTab === 'active') {
-      result = result.filter((o) => isOrderActive(o.status));
-    } else if (activeTab === 'delivered') {
-      result = result.filter((o) => isOrderDelivered(o.status));
-    } else if (activeTab === 'cancelled') {
-      result = result.filter((o) => isOrderCancelledOrReturned(o.status));
-    }
-
-    // Filter by search query
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      result = result.filter(
-        (o) =>
-          o.id.toLowerCase().includes(q) ||
-          o.items.some(
-            (item) =>
-              item.product?.name?.toLowerCase().includes(q) ||
-              item.product?.brand?.toLowerCase().includes(q)
-          )
-      );
-    }
-
-    return result;
-  }, [orders, activeTab, searchQuery]);
-
-  // Cancel order execution
-  const handleConfirmCancel = async () => {
-    if (!cancelOrderTarget) return;
-    setIsCancelling(true);
-    try {
-      const ok = await storeService.cancelOrder(
-        cancelOrderTarget.id,
-        selectedCancelReason
-      );
-      if (ok) {
-        showFeedback(`Order #${cancelOrderTarget.id} was cancelled successfully.`);
-        // Update local order list and currently viewed details if any
-        setOrders((prev) =>
-          prev.map((o) => {
-            if (o.id === cancelOrderTarget.id) {
-              const updated: Order = {
-                ...o,
-                status: 'Cancelled',
-                paymentStatus: o.paymentStatus === 'Paid' ? 'Refunded' : o.paymentStatus,
-                trackingSteps: [
-                  ...o.trackingSteps.map((s) => ({ ...s, active: false })),
-                  {
-                    title: `Cancelled (${selectedCancelReason})`,
-                    date: 'Today',
-                    completed: true,
-                    active: false,
-                  },
-                ],
-              };
-              if (detailsModalOrder && detailsModalOrder.id === o.id) {
-                setDetailsModalOrder(updated);
-              }
-              return updated;
-            }
-            return o;
-          })
-        );
-        setCancelOrderTarget(null);
-      } else {
-        showFeedback(
-          'Unable to cancel this order. Backend policy only allows cancellation prior to dispatch and delivery.',
-          true
-        );
-      }
-    } catch {
-      showFeedback('Cancellation failed. Please check your network and retry.', true);
-    } finally {
-      setIsCancelling(false);
-    }
-  };
-
-  // Return / Exchange execution
-  const handleConfirmReturn = async () => {
-    if (!returnOrderTarget) return;
-    setIsSubmittingReturn(true);
-    try {
-      const ok = await storeService.returnOrder(
-        returnOrderTarget.id,
-        returnType,
-        selectedReturnReason
-      );
-      if (ok) {
-        const actionLabel = returnType === 'exchange' ? 'Exchange request' : 'Return';
-        showFeedback(
-          `${actionLabel} for #${returnOrderTarget.id} initiated. Courier pickup scheduled in 1-2 business days.`
-        );
-        // Update local order list and currently viewed details if any
-        setOrders((prev) =>
-          prev.map((o) => {
-            if (o.id === returnOrderTarget.id) {
-              const updated: Order = {
-                ...o,
-                status: 'Returned',
-                paymentStatus: returnType === 'return' ? 'Refunded' : o.paymentStatus,
-                trackingSteps: [
-                  ...o.trackingSteps,
-                  {
-                    title:
-                      returnType === 'exchange'
-                        ? `Exchange Requested (${selectedReturnReason})`
-                        : `Return Initiated (${selectedReturnReason})`,
-                    date: 'Pickup in 1-2 business days',
-                    completed: true,
-                    active: false,
-                  },
-                ],
-              };
-              if (detailsModalOrder && detailsModalOrder.id === o.id) {
-                setDetailsModalOrder(updated);
-              }
-              return updated;
-            }
-            return o;
-          })
-        );
-        setReturnOrderTarget(null);
-      } else {
-        showFeedback(
-          'Return request could not be processed. Backend policy requires Delivered status.',
-          true
-        );
-      }
-    } catch {
-      showFeedback('Return submission failed. Please try again.', true);
-    } finally {
-      setIsSubmittingReturn(false);
-    }
   };
 
   // Status visual badge styling
@@ -384,6 +288,61 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
     }
   };
 
+  const getPaymentBadgeDetails = (paymentStatus?: string, paymentMethod = '') => {
+    const isCod = paymentMethod.toLowerCase().includes('cash');
+    switch (paymentStatus) {
+      case 'Paid':
+        return {
+          bg: '#ecfdf5',
+          text: '#047857',
+          border: '#a7f3d0',
+          label: 'PAID',
+          icon: 'checkmark-circle' as const,
+        };
+      case 'Failed':
+        return {
+          bg: '#fef2f2',
+          text: '#dc2626',
+          border: '#fecaca',
+          label: 'PAYMENT FAILED',
+          icon: 'alert-circle' as const,
+        };
+      case 'Cancelled':
+        return {
+          bg: '#f3f4f6',
+          text: '#4b5563',
+          border: '#e5e7eb',
+          label: 'PAYMENT CANCELLED',
+          icon: 'close-circle' as const,
+        };
+      case 'Refund Pending':
+        return {
+          bg: '#eff6ff',
+          text: '#1d4ed8',
+          border: '#bfdbfe',
+          label: 'REFUND PENDING',
+          icon: 'time-outline' as const,
+        };
+      case 'Refunded':
+        return {
+          bg: '#faf5ff',
+          text: '#7e22ce',
+          border: '#e9d5ff',
+          label: 'REFUNDED',
+          icon: 'repeat-outline' as const,
+        };
+      case 'Pending':
+      default:
+        return {
+          bg: '#fffbeb',
+          text: '#b45309',
+          border: '#fde68a',
+          label: isCod ? 'PENDING COD' : 'PAYMENT PENDING',
+          icon: 'hourglass-outline' as const,
+        };
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
@@ -395,6 +354,237 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
       });
     } catch {
       return dateStr;
+    }
+  };
+
+  // Reorder execution
+  const handleReorder = async (order: Order) => {
+    setIsReorderingId(order.id);
+    setReorderFeedback(null);
+    try {
+      const res = await storeService.reorder(order.id);
+      if (res.success && res.summary) {
+        setReorderFeedback(res.summary);
+        if (res.summary.addedCount > 0) {
+          showFeedback(`✓ ${res.summary.addedCount} item(s) added to your shopping bag.`);
+        } else {
+          showFeedback('None of the items from this order are currently available in stock.', true);
+        }
+      } else {
+        showFeedback(res.error || 'Unable to reorder items at this moment.', true);
+      }
+    } catch {
+      showFeedback('Network error while processing reorder request.', true);
+    } finally {
+      setIsReorderingId(null);
+    }
+  };
+
+  // Invoice Download / View execution with real file download, progress & sharing
+  const handleDownloadInvoice = async (order: Order) => {
+    setIsDownloadingInvoiceId(order.id);
+    setInvoiceDownloadProgress((prev) => ({ ...prev, [order.id]: 0 }));
+    showFeedback(`Preparing tax invoice for Order #${order.id}...`);
+
+    try {
+      const res = await storeService.downloadInvoicePdf(order.id, (progress) => {
+        setInvoiceDownloadProgress((prev) => ({ ...prev, [order.id]: progress }));
+      });
+
+      if (res.success) {
+        showFeedback(
+          Platform.OS === 'web'
+            ? `✓ Tax invoice for Order #${order.id} downloaded.`
+            : `✓ Tax invoice for Order #${order.id} saved & ready to share/print.`
+        );
+      } else {
+        showFeedback(res.error || 'Failed to download invoice. Please try again.', true);
+      }
+    } catch (err: any) {
+      showFeedback(err?.message || 'Failed to download invoice. Please try again.', true);
+    } finally {
+      setIsDownloadingInvoiceId(null);
+      setInvoiceDownloadProgress((prev) => {
+        const next = { ...prev };
+        delete next[order.id];
+        return next;
+      });
+    }
+  };
+
+  // Safe payment retry flow for Pending / Failed online orders
+  const handleRetryPayment = async (order: Order) => {
+    setIsRetryingPaymentId(order.id);
+    showFeedback(`Initializing secure payment retry for Order #${order.id}...`);
+
+    try {
+      const rzpOrder = await storeService.createRazorpayOrder(
+        order.totalAmount,
+        undefined,
+        order.id
+      );
+
+      if (!rzpOrder.success || !rzpOrder.orderId) {
+        throw new Error(rzpOrder.error || 'Failed to initialize payment retry session.');
+      }
+
+      const isLiveKey = Boolean(
+        rzpOrder.isLive &&
+        rzpOrder.keyId &&
+        !rzpOrder.keyId.includes('placeholder')
+      );
+
+      if (!isLiveKey) {
+        showFeedback('Live Razorpay credentials (RAZORPAY_KEY_ID & SECRET) are not yet configured in server/.env.', true);
+        return;
+      }
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const loadScript = (): Promise<boolean> => {
+          return new Promise((resolve) => {
+            if ((window as any).Razorpay) return resolve(true);
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.async = true;
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+          });
+        };
+
+        const loaded = await loadScript();
+        if (loaded && (window as any).Razorpay) {
+          const options = {
+            key: rzpOrder.keyId,
+            amount: rzpOrder.amount,
+            currency: rzpOrder.currency || 'INR',
+            name: 'Myntra Fashion',
+            description: `Payment Retry for Order #${order.id}`,
+            image: 'https://assets.myntassets.com/assets/images/retaillabs/2023/2/28/a9cd936f-5b65-4f47-8a61-9c8dfb5a6c4b1677567702582-Myntra-logo.png',
+            order_id: rzpOrder.orderId,
+            handler: async function (response: any) {
+              try {
+                const verifyRes = await storeService.verifyRazorpayPayment(
+                  response.razorpay_order_id || rzpOrder.orderId,
+                  response.razorpay_payment_id,
+                  response.razorpay_signature,
+                  order.id,
+                  order.totalAmount
+                );
+                if (verifyRes.verified || verifyRes.success) {
+                  showFeedback(`✓ Payment successful for Order #${order.id}!`);
+                  fetchOrders(pagination.page, false);
+                  if (detailsModalOrder?.id === order.id) {
+                    const fresh = await storeService.getOrderById(order.id);
+                    if (fresh) setDetailsModalOrder(fresh);
+                  }
+                } else {
+                  await storeService.reportPaymentFailure(order.id, 'Signature mismatch');
+                  showFeedback('Payment verification failed. Order marked as Failed.', true);
+                }
+              } catch (e: any) {
+                showFeedback(e?.message || 'Verification failed.', true);
+              }
+            },
+            modal: {
+              ondismiss: async () => {
+                await storeService.reportPaymentCancellation(order.id);
+                showFeedback('Payment retry was cancelled.');
+              },
+            },
+          };
+          const rzp = new (window as any).Razorpay(options);
+          rzp.open();
+          return;
+        }
+      }
+
+      // Native Mobile / Expo WebBrowser checkout session
+      const checkoutUrl = storeService.getPaymentCheckoutUrl(order.id);
+      await WebBrowser.openBrowserAsync(checkoutUrl);
+      const freshOrder = await storeService.getOrderById(order.id);
+      if (freshOrder?.paymentStatus === 'Paid') {
+        showFeedback(`✓ Payment successfully verified for Order #${order.id}!`);
+      } else {
+        showFeedback(`Order #${order.id} payment status: ${freshOrder?.paymentStatus || 'Pending'}.`);
+      }
+      fetchOrders(pagination.page, false);
+      if (detailsModalOrder?.id === order.id && freshOrder) {
+        setDetailsModalOrder(freshOrder);
+      }
+    } catch (err: any) {
+      showFeedback(err?.message || 'Failed to retry payment.', true);
+    } finally {
+      setIsRetryingPaymentId(null);
+    }
+  };
+
+  // Cancel order execution
+  const handleConfirmCancel = async () => {
+    if (!cancelOrderTarget) return;
+    setIsCancelling(true);
+    try {
+      const res = await storeService.cancelOrder(
+        cancelOrderTarget.id,
+        selectedCancelReason
+      );
+
+      if (res.success && res.order) {
+        showFeedback(`Order #${cancelOrderTarget.id} was cancelled successfully.`);
+        setOrders((prev) =>
+          prev.map((o) => (o.id === cancelOrderTarget.id ? res.order! : o))
+        );
+        if (detailsModalOrder && detailsModalOrder.id === cancelOrderTarget.id) {
+          setDetailsModalOrder(res.order);
+        }
+        setCancelOrderTarget(null);
+      } else {
+        showFeedback(
+          res.error || 'Unable to cancel this order. Only un-delivered orders can be cancelled.',
+          true
+        );
+      }
+    } catch {
+      showFeedback('Cancellation request failed. Please check network and retry.', true);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  // Return / Exchange execution
+  const handleConfirmReturn = async () => {
+    if (!returnOrderTarget) return;
+    setIsSubmittingReturn(true);
+    try {
+      const res = await storeService.returnOrder(
+        returnOrderTarget.id,
+        returnType,
+        selectedReturnReason,
+        returnType === 'exchange' ? exchangeSize : undefined
+      );
+
+      if (res.success && res.order) {
+        const actionLabel = returnType === 'exchange' ? 'Exchange request' : 'Return';
+        showFeedback(
+          `${actionLabel} for #${returnOrderTarget.id} initiated. Courier pickup scheduled in 1-2 business days.`
+        );
+        setOrders((prev) =>
+          prev.map((o) => (o.id === returnOrderTarget.id ? res.order! : o))
+        );
+        if (detailsModalOrder && detailsModalOrder.id === returnOrderTarget.id) {
+          setDetailsModalOrder(res.order);
+        }
+        setReturnOrderTarget(null);
+      } else {
+        showFeedback(
+          res.error || 'Return request could not be processed. Orders must be Delivered and within 14 days.',
+          true
+        );
+      }
+    } catch {
+      showFeedback('Return submission failed. Please try again.', true);
+    } finally {
+      setIsSubmittingReturn(false);
     }
   };
 
@@ -504,18 +694,45 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                           : detailsModalOrder.status === 'Cancelled'
                           ? 'This order was cancelled.'
                           : detailsModalOrder.status === 'Returned'
-                          ? 'Return processed. Refund issued.'
+                          ? 'Return processed. Refund issued to payment mode.'
                           : `Arriving by ${detailsModalOrder.deliveryDate}`}
                       </Text>
                       <Text style={styles.detailDeliverySub}>
                         {detailsModalOrder.status === 'Delivered'
                           ? 'Thank you for shopping with Myntra! 14-day easy return or exchange eligible.'
                           : detailsModalOrder.status === 'Cancelled'
-                          ? 'As requested, your order has been cancelled and any paid amount is refunded.'
+                          ? detailsModalOrder.cancelReason
+                            ? `Reason: ${detailsModalOrder.cancelReason}. Safe refund initiated.`
+                            : 'Order cancelled. Refund initiated to original payment mode.'
                           : detailsModalOrder.status === 'Returned'
-                          ? 'Pickup will be completed by delivery partner. Refund credited within 24-48 hours.'
-                          : 'Your package is on track. Live updates will reflect below.'}
+                          ? 'Pickup will be completed by courier partner. Inspection & refund processed.'
+                          : 'Your package is safely packed and dispatched. Live tracking below.'}
                       </Text>
+
+                      {/* Invoice Quick CTA in Details */}
+                      <View style={styles.invoiceCtaRow}>
+                        <TouchableOpacity
+                          onPress={() => handleDownloadInvoice(detailsModalOrder)}
+                          disabled={isDownloadingInvoiceId === detailsModalOrder.id}
+                          style={styles.invoiceBtnTop}
+                          activeOpacity={0.8}>
+                          {isDownloadingInvoiceId === detailsModalOrder.id ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <ActivityIndicator size="small" color={MyntraColors.primary} />
+                              <Text style={styles.invoiceBtnTopText}>
+                                {invoiceDownloadProgress[detailsModalOrder.id] !== undefined
+                                  ? `DOWNLOADING (${invoiceDownloadProgress[detailsModalOrder.id]}%)...`
+                                  : 'GENERATING PDF...'}
+                              </Text>
+                            </View>
+                          ) : (
+                            <>
+                              <Ionicons name="document-text-outline" size={15} color={MyntraColors.primary} />
+                              <Text style={styles.invoiceBtnTopText}>DOWNLOAD TAX INVOICE (PDF)</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   );
                 })()}
@@ -574,7 +791,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                   </View>
                 )}
 
-                {/* 3. Items Ordered Card */}
+                {/* 3. Items Ordered Card with Persisted Snapshots */}
                 <View style={styles.detailSectionCard}>
                   <View style={styles.sectionHeaderRow}>
                     <Ionicons name="bag-check-outline" size={17} color={MyntraColors.primary} />
@@ -584,53 +801,64 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                   </View>
 
                   <View style={styles.detailItemsList}>
-                    {detailsModalOrder.items.map((item, idx) => (
-                      <View key={idx} style={styles.detailItemCard}>
-                        <Image
-                          source={{
-                            uri:
-                              item.product?.image ||
-                              'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
-                          }}
-                          style={styles.detailProductImage}
-                        />
-                        <View style={styles.detailProductInfo}>
-                          <Text style={styles.detailProductBrand}>
-                            {item.product?.brand || 'MYNTRA BRAND'}
-                          </Text>
-                          <Text style={styles.detailProductName} numberOfLines={2}>
-                            {item.product?.name || 'Fashion Apparel'}
-                          </Text>
-                          <View style={styles.detailMetaPillsRow}>
-                            <View style={styles.metaPill}>
-                              <Text style={styles.metaPillLabel}>Size: </Text>
-                              <Text style={styles.metaPillVal}>{item.size}</Text>
-                            </View>
-                            {item.color ? (
-                              <View style={styles.metaPill}>
-                                <Text style={styles.metaPillLabel}>Color: </Text>
-                                <Text style={styles.metaPillVal}>{item.color}</Text>
-                              </View>
-                            ) : null}
-                            <View style={styles.metaPill}>
-                              <Text style={styles.metaPillLabel}>Qty: </Text>
-                              <Text style={styles.metaPillVal}>{item.quantity}</Text>
-                            </View>
-                          </View>
-                          <View style={styles.detailPriceRow}>
-                            <Text style={styles.detailItemFinalPrice}>
-                              ₹{(item.product?.price || 0) * item.quantity}
+                    {detailsModalOrder.items.map((item, idx) => {
+                      const prod = item.product || {};
+                      const itemPrice = prod.price || item.product?.price || 0;
+                      const origPrice = prod.originalPrice || item.product?.originalPrice || itemPrice;
+                      const sellerName = (prod as any).seller?.name || `${prod.brand || 'Retail'} Authorized Partner`;
+
+                      return (
+                        <View key={idx} style={styles.detailItemCard}>
+                          <Image
+                            source={{
+                              uri:
+                                prod.image ||
+                                'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
+                            }}
+                            style={styles.detailProductImage}
+                          />
+                          <View style={styles.detailProductInfo}>
+                            <Text style={styles.detailProductBrand}>
+                              {prod.brand || 'MYNTRA'}
                             </Text>
-                            {item.product?.originalPrice &&
-                              item.product.originalPrice > item.product.price && (
+                            <Text style={styles.detailProductName} numberOfLines={2}>
+                              {prod.name || 'Fashion Apparel'}
+                            </Text>
+                            <Text style={styles.detailSellerText}>
+                              Sold by: <Text style={styles.detailSellerBold}>{sellerName}</Text>
+                            </Text>
+
+                            <View style={styles.detailMetaPillsRow}>
+                              <View style={styles.metaPill}>
+                                <Text style={styles.metaPillLabel}>Size: </Text>
+                                <Text style={styles.metaPillVal}>{item.size}</Text>
+                              </View>
+                              {item.color ? (
+                                <View style={styles.metaPill}>
+                                  <Text style={styles.metaPillLabel}>Color: </Text>
+                                  <Text style={styles.metaPillVal}>{item.color}</Text>
+                                </View>
+                              ) : null}
+                              <View style={styles.metaPill}>
+                                <Text style={styles.metaPillLabel}>Qty: </Text>
+                                <Text style={styles.metaPillVal}>{item.quantity}</Text>
+                              </View>
+                            </View>
+
+                            <View style={styles.detailPriceRow}>
+                              <Text style={styles.detailItemFinalPrice}>
+                                ₹{itemPrice * item.quantity}
+                              </Text>
+                              {origPrice > itemPrice && (
                                 <Text style={styles.detailItemOriginalPrice}>
-                                  ₹{item.product.originalPrice * item.quantity}
+                                  ₹{origPrice * item.quantity}
                                 </Text>
                               )}
+                            </View>
                           </View>
                         </View>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 </View>
 
@@ -699,13 +927,17 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     <Text style={styles.priceTotalLabel}>Total Amount Paid</Text>
                     <Text style={styles.priceTotalVal}>₹{detailsModalOrder.totalAmount}</Text>
                   </View>
+
+                  <Text style={styles.taxInclusiveNote}>
+                    * All prices are inclusive of Goods and Services Taxes (GST).
+                  </Text>
                 </View>
 
                 {/* 6. Payment Method & Status Card */}
                 <View style={styles.detailSectionCard}>
                   <View style={styles.sectionHeaderRow}>
                     <Ionicons name="card-outline" size={17} color={MyntraColors.primary} />
-                    <Text style={styles.sectionHeaderTitle}>PAYMENT MODE</Text>
+                    <Text style={styles.sectionHeaderTitle}>PAYMENT MODE & STATUS</Text>
                   </View>
 
                   <View style={styles.paymentInfoRow}>
@@ -724,35 +956,96 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                       </Text>
                     </View>
 
-                    <View
-                      style={[
-                        styles.paymentStatusPill,
-                        detailsModalOrder.paymentStatus === 'Paid'
-                          ? styles.paymentStatusPillPaid
-                          : detailsModalOrder.paymentStatus === 'Refunded'
-                          ? styles.paymentStatusPillRefunded
-                          : styles.paymentStatusPillPending,
-                      ]}>
-                      <Text
-                        style={[
-                          styles.paymentStatusPillText,
-                          detailsModalOrder.paymentStatus === 'Paid'
-                            ? styles.paymentStatusTextPaid
-                            : detailsModalOrder.paymentStatus === 'Refunded'
-                            ? styles.paymentStatusTextRefunded
-                            : styles.paymentStatusTextPending,
-                        ]}>
-                        {detailsModalOrder.paymentStatus ||
-                          (detailsModalOrder.paymentMethod.toLowerCase().includes('cash')
-                            ? 'PENDING COD'
-                            : 'PAID')}
-                      </Text>
-                    </View>
+                    {(() => {
+                      const pBadge = getPaymentBadgeDetails(
+                        detailsModalOrder.paymentStatus,
+                        detailsModalOrder.paymentMethod
+                      );
+                      return (
+                        <View
+                          style={[
+                            styles.paymentStatusPill,
+                            {
+                              backgroundColor: pBadge.bg,
+                              borderColor: pBadge.border,
+                              borderWidth: 1,
+                            },
+                          ]}>
+                          <Ionicons
+                            name={pBadge.icon}
+                            size={13}
+                            color={pBadge.text}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text
+                            style={[
+                              styles.paymentStatusPillText,
+                              { color: pBadge.text },
+                            ]}>
+                            {pBadge.label}
+                          </Text>
+                        </View>
+                      );
+                    })()}
                   </View>
+
+                  {/* Retry Payment Button in Payment Card */}
+                  {detailsModalOrder.paymentStatus !== 'Paid' &&
+                    detailsModalOrder.paymentStatus !== 'Refunded' &&
+                    !detailsModalOrder.paymentMethod.toLowerCase().includes('cash') &&
+                    detailsModalOrder.status !== 'Cancelled' && (
+                      <TouchableOpacity
+                        onPress={() => handleRetryPayment(detailsModalOrder)}
+                        disabled={isRetryingPaymentId === detailsModalOrder.id}
+                        style={{
+                          marginTop: 12,
+                          backgroundColor: MyntraColors.primary,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          paddingVertical: 10,
+                          borderRadius: 6,
+                          gap: 6,
+                        }}
+                        activeOpacity={0.85}>
+                        {isRetryingPaymentId === detailsModalOrder.id ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <>
+                            <Ionicons name="card" size={16} color="#fff" />
+                            <Text
+                              style={{
+                                color: '#fff',
+                                fontSize: 12,
+                                fontWeight: '800',
+                                letterSpacing: 0.5,
+                              }}>
+                              RETRY ONLINE PAYMENT
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* 7. Action CTA Buttons in Details */}
                 <View style={styles.detailsActionsSection}>
+                  {/* Reorder Button */}
+                  <TouchableOpacity
+                    onPress={() => handleReorder(detailsModalOrder)}
+                    disabled={isReorderingId === detailsModalOrder.id}
+                    style={styles.detailsReorderBtn}
+                    activeOpacity={0.8}>
+                    {isReorderingId === detailsModalOrder.id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="reload-outline" size={18} color="#fff" />
+                        <Text style={styles.detailsReorderText}>REORDER ITEMS</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
                   {isOrderActive(detailsModalOrder.status) && (
                     <TouchableOpacity
                       onPress={() => setCancelOrderTarget(detailsModalOrder)}
@@ -796,13 +1089,28 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                 <View style={styles.headerLeft}>
                   <Text style={styles.headerTitle}>MY ORDERS</Text>
                   <Text style={styles.orderCount}>
-                    {counts.all} {counts.all === 1 ? 'Order' : 'Orders'} Placed
+                    {pagination.total} {pagination.total === 1 ? 'Order' : 'Orders'} Found
                   </Text>
                 </View>
 
                 <View style={styles.headerActions}>
                   <TouchableOpacity
-                    onPress={() => loadOrders(true)}
+                    onPress={() => setShowFiltersBar(!showFiltersBar)}
+                    style={[
+                      styles.headerIconBtn,
+                      showFiltersBar && styles.headerIconBtnActive,
+                    ]}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Toggle filters">
+                    <Ionicons
+                      name="options-outline"
+                      size={20}
+                      color={showFiltersBar ? MyntraColors.primary : MyntraColors.text}
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => fetchOrders(1, true)}
                     style={styles.headerIconBtn}
                     activeOpacity={0.7}
                     accessibilityLabel="Refresh orders">
@@ -849,7 +1157,42 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                 </View>
               )}
 
-              {/* 3. Search Bar */}
+              {/* 3. Reorder Result Banner (with View Bag CTA) */}
+              {reorderFeedback && (
+                <View style={styles.reorderResultBanner}>
+                  <View style={styles.reorderResultLeft}>
+                    <Ionicons name="bag-check" size={20} color="#047857" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.reorderResultTitle}>
+                        {reorderFeedback.addedCount} item(s) added to your Bag!
+                      </Text>
+                      {reorderFeedback.unavailableCount > 0 && (
+                        <Text style={styles.reorderResultSub}>
+                          {reorderFeedback.unavailableCount} item(s) were out of stock and omitted.
+                        </Text>
+                      )}
+                      {reorderFeedback.priceChangedCount > 0 && (
+                        <Text style={styles.reorderResultSub}>
+                          Current prices updated for {reorderFeedback.priceChangedCount} item(s).
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  {onViewBag && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onClose();
+                        onViewBag();
+                      }}
+                      style={styles.viewBagBtn}
+                      activeOpacity={0.8}>
+                      <Text style={styles.viewBagBtnText}>GO TO BAG</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* 4. Search Bar */}
               <View style={styles.searchBarContainer}>
                 <View style={styles.searchInputWrap}>
                   <Ionicons name="search-outline" size={16} color={MyntraColors.textMuted} />
@@ -868,14 +1211,14 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                 </View>
               </View>
 
-              {/* 4. Filter Tabs Bar */}
+              {/* 5. Filter Tabs Bar */}
               <View style={styles.tabsContainer}>
                 {(
                   [
-                    { key: 'all', label: 'All', count: counts.all },
-                    { key: 'active', label: 'Active', count: counts.active },
-                    { key: 'delivered', label: 'Delivered', count: counts.delivered },
-                    { key: 'cancelled', label: 'Cancelled', count: counts.cancelled },
+                    { key: 'all', label: 'All' },
+                    { key: 'active', label: 'Active' },
+                    { key: 'delivered', label: 'Delivered' },
+                    { key: 'cancelled', label: 'Cancelled' },
                   ] as const
                 ).map((tab) => {
                   const isActive = activeTab === tab.key;
@@ -888,31 +1231,71 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                       <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
                         {tab.label}
                       </Text>
-                      {tab.count > 0 && (
-                        <View
-                          style={[
-                            styles.tabCountBadge,
-                            isActive && styles.tabCountBadgeActive,
-                          ]}>
-                          <Text
-                            style={[
-                              styles.tabCountText,
-                              isActive && styles.tabCountTextActive,
-                            ]}>
-                            {tab.count}
-                          </Text>
-                        </View>
-                      )}
                     </TouchableOpacity>
                   );
                 })}
               </View>
 
-              {/* 5. Main Content: Loading, Error, Empty, or Orders List */}
+              {/* 6. Sorting & Date Range Filter Strip (Collapsible) */}
+              {showFiltersBar && (
+                <View style={styles.extraFiltersStrip}>
+                  {/* Date Range Chips */}
+                  <View style={styles.filterGroup}>
+                    <Text style={styles.filterGroupLabel}>TIME PERIOD:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+                      {(
+                        [
+                          { key: 'all', label: 'All Time' },
+                          { key: 'last30days', label: 'Last 30 Days' },
+                          { key: 'last6months', label: 'Last 6 Months' },
+                          { key: 'thisyear', label: 'This Year' },
+                        ] as const
+                      ).map((item) => (
+                        <TouchableOpacity
+                          key={item.key}
+                          onPress={() => setDateRange(item.key)}
+                          style={[styles.chip, dateRange === item.key && styles.chipActive]}
+                          activeOpacity={0.7}>
+                          <Text style={[styles.chipText, dateRange === item.key && styles.chipTextActive]}>
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+
+                  {/* Sorting Chips */}
+                  <View style={styles.filterGroup}>
+                    <Text style={styles.filterGroupLabel}>SORT BY:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+                      {(
+                        [
+                          { key: 'date_desc', label: 'Newest First' },
+                          { key: 'date_asc', label: 'Oldest First' },
+                          { key: 'amount_desc', label: 'Price: High to Low' },
+                          { key: 'amount_asc', label: 'Price: Low to High' },
+                        ] as const
+                      ).map((item) => (
+                        <TouchableOpacity
+                          key={item.key}
+                          onPress={() => setSortBy(item.key)}
+                          style={[styles.chip, sortBy === item.key && styles.chipActive]}
+                          activeOpacity={0.7}>
+                          <Text style={[styles.chipText, sortBy === item.key && styles.chipTextActive]}>
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                </View>
+              )}
+
+              {/* 7. Main Content: Loading, Error, Empty, or Orders List */}
               {isLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={MyntraColors.primary} />
-                  <Text style={styles.loadingText}>Fetching your orders...</Text>
+                  <Text style={styles.loadingText}>Fetching orders from server...</Text>
                 </View>
               ) : loadError ? (
                 <View style={styles.errorContainer}>
@@ -920,28 +1303,28 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                   <Text style={styles.errorTitle}>Failed to Load Orders</Text>
                   <Text style={styles.errorSub}>{loadError}</Text>
                   <TouchableOpacity
-                    onPress={() => loadOrders()}
+                    onPress={() => fetchOrders(1)}
                     style={styles.retryBtn}
                     activeOpacity={0.8}>
                     <Text style={styles.retryBtnText}>RETRY</Text>
                   </TouchableOpacity>
                 </View>
-              ) : filteredOrders.length === 0 ? (
+              ) : orders.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <View style={styles.emptyIconCircle}>
                     <Ionicons name="cube-outline" size={44} color={MyntraColors.primary} />
                   </View>
                   <Text style={styles.emptyTitle}>
-                    {orders.length === 0
+                    {activeTab === 'all' && !searchQuery
                       ? 'NO ORDERS PLACED YET'
                       : 'NO MATCHING ORDERS FOUND'}
                   </Text>
                   <Text style={styles.emptySub}>
-                    {orders.length === 0
+                    {activeTab === 'all' && !searchQuery
                       ? 'Explore the latest fashion collections and trends. Place your first order with exclusive offers!'
-                      : 'No orders match your selected filter or search query. Try changing the tab or clearing the search.'}
+                      : 'No orders match your selected filter or search query. Try changing filters or clearing search.'}
                   </Text>
-                  {orders.length === 0 ? (
+                  {activeTab === 'all' && !searchQuery ? (
                     <TouchableOpacity
                       onPress={() => {
                         onClose();
@@ -956,6 +1339,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     <TouchableOpacity
                       onPress={() => {
                         setActiveTab('all');
+                        setDateRange('all');
                         setSearchQuery('');
                       }}
                       style={styles.startShoppingBtn}
@@ -971,11 +1355,11 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                   refreshControl={
                     <RefreshControl
                       refreshing={isRefreshing}
-                      onRefresh={() => loadOrders(true)}
+                      onRefresh={() => fetchOrders(1, true)}
                       colors={[MyntraColors.primary]}
                     />
                   }>
-                  {filteredOrders.map((order) => {
+                  {orders.map((order) => {
                     const isExpanded = expandedOrderId === order.id;
                     const statusBadge = getStatusBadge(order.status);
                     const orderDate = formatDate(order.date);
@@ -1054,42 +1438,46 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                           onPress={() => setDetailsModalOrder(order)}
                           style={styles.itemsContainer}
                           activeOpacity={0.85}>
-                          {order.items.map((item, idx) => (
-                            <View key={idx} style={styles.orderItemRow}>
-                              <Image
-                                source={{
-                                  uri:
-                                    item.product?.image ||
-                                    'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
-                                }}
-                                style={styles.orderItemImage}
-                              />
-                              <View style={styles.orderItemInfo}>
-                                <Text style={styles.orderItemBrand}>
-                                  {item.product?.brand || 'MYNTRA'}
-                                </Text>
-                                <Text style={styles.orderItemName} numberOfLines={1}>
-                                  {item.product?.name || 'Fashion Product'}
-                                </Text>
-                                <View style={styles.orderItemMetaRow}>
-                                  <Text style={styles.orderItemMeta}>
-                                    Size: <Text style={styles.orderItemMetaBold}>{item.size}</Text>
+                          {order.items.map((item, idx) => {
+                            const prod = item.product || {};
+                            const unitPrice = prod.price || (item as any).unitPrice || 0;
+                            return (
+                              <View key={idx} style={styles.orderItemRow}>
+                                <Image
+                                  source={{
+                                    uri:
+                                      prod.image ||
+                                      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
+                                  }}
+                                  style={styles.orderItemImage}
+                                />
+                                <View style={styles.orderItemInfo}>
+                                  <Text style={styles.orderItemBrand}>
+                                    {prod.brand || 'MYNTRA'}
                                   </Text>
-                                  {item.color && (
+                                  <Text style={styles.orderItemName} numberOfLines={1}>
+                                    {prod.name || 'Fashion Product'}
+                                  </Text>
+                                  <View style={styles.orderItemMetaRow}>
                                     <Text style={styles.orderItemMeta}>
-                                      {' '}• Color: <Text style={styles.orderItemMetaBold}>{item.color}</Text>
+                                      Size: <Text style={styles.orderItemMetaBold}>{item.size}</Text>
                                     </Text>
-                                  )}
-                                  <Text style={styles.orderItemMeta}>
-                                    {' '}• Qty: <Text style={styles.orderItemMetaBold}>{item.quantity}</Text>
+                                    {item.color && (
+                                      <Text style={styles.orderItemMeta}>
+                                        {' '}• Color: <Text style={styles.orderItemMetaBold}>{item.color}</Text>
+                                      </Text>
+                                    )}
+                                    <Text style={styles.orderItemMeta}>
+                                      {' '}• Qty: <Text style={styles.orderItemMetaBold}>{item.quantity}</Text>
+                                    </Text>
+                                  </View>
+                                  <Text style={styles.orderItemPrice}>
+                                    ₹{unitPrice * item.quantity}
                                   </Text>
                                 </View>
-                                <Text style={styles.orderItemPrice}>
-                                  ₹{(item.product?.price || 0) * item.quantity}
-                                </Text>
                               </View>
-                            </View>
-                          ))}
+                            );
+                          })}
                         </TouchableOpacity>
 
                         {/* Order Financial & Payment Row */}
@@ -1117,22 +1505,39 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                             </View>
                           </View>
 
-                          <View style={styles.paymentStatusBadge}>
-                            <Text
-                              style={[
-                                styles.paymentStatusText,
-                                order.paymentStatus === 'Paid'
-                                  ? styles.paymentStatusPaid
-                                  : order.paymentStatus === 'Refunded'
-                                  ? styles.paymentStatusRefunded
-                                  : styles.paymentStatusPending,
-                              ]}>
-                              {order.paymentStatus ||
-                                (order.paymentMethod.toLowerCase().includes('cash')
-                                  ? 'PENDING COD'
-                                  : 'PAID')}
-                            </Text>
-                          </View>
+                          {(() => {
+                            const pBadge = getPaymentBadgeDetails(
+                              order.paymentStatus,
+                              order.paymentMethod
+                            );
+                            return (
+                              <View
+                                style={[
+                                  styles.paymentStatusBadge,
+                                  {
+                                    backgroundColor: pBadge.bg,
+                                    borderColor: pBadge.border,
+                                    borderWidth: 1,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                  },
+                                ]}>
+                                <Ionicons
+                                  name={pBadge.icon}
+                                  size={11}
+                                  color={pBadge.text}
+                                  style={{ marginRight: 3 }}
+                                />
+                                <Text
+                                  style={[
+                                    styles.paymentStatusText,
+                                    { color: pBadge.text, fontWeight: '700' },
+                                  ]}>
+                                  {pBadge.label}
+                                </Text>
+                              </View>
+                            );
+                          })()}
                         </View>
 
                         {/* Quick Tracking Timeline Strip (if expanded inline) */}
@@ -1183,16 +1588,91 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
 
                         {/* Action Buttons Bar */}
                         <View style={styles.cardActionsBar}>
-                          {/* View Details Button */}
+                          {/* Pay Now Button (Only for Pending / Failed online orders) */}
+                          {order.paymentStatus !== 'Paid' &&
+                            order.paymentStatus !== 'Refunded' &&
+                            !order.paymentMethod.toLowerCase().includes('cash') &&
+                            order.status !== 'Cancelled' && (
+                              <TouchableOpacity
+                                onPress={() => handleRetryPayment(order)}
+                                disabled={isRetryingPaymentId === order.id}
+                                style={[
+                                  styles.actionBtnOutline,
+                                  { backgroundColor: '#fff1f2', borderColor: MyntraColors.primary },
+                                ]}
+                                activeOpacity={0.75}>
+                                {isRetryingPaymentId === order.id ? (
+                                  <ActivityIndicator size="small" color={MyntraColors.primary} />
+                                ) : (
+                                  <>
+                                    <Ionicons name="card" size={12} color={MyntraColors.primary} />
+                                    <Text
+                                      style={[
+                                        styles.actionBtnOutlineText,
+                                        { color: MyntraColors.primary, fontWeight: '800' },
+                                      ]}>
+                                      PAY NOW
+                                    </Text>
+                                  </>
+                                )}
+                              </TouchableOpacity>
+                            )}
+
+                          {/* View Details */}
                           <TouchableOpacity
                             onPress={() => setDetailsModalOrder(order)}
                             style={styles.actionBtnOutline}
                             activeOpacity={0.75}>
-                            <Ionicons name="receipt-outline" size={14} color={MyntraColors.text} />
-                            <Text style={styles.actionBtnOutlineText}>VIEW DETAILS</Text>
+                            <Ionicons name="receipt-outline" size={13} color={MyntraColors.text} />
+                            <Text style={styles.actionBtnOutlineText}>DETAILS</Text>
                           </TouchableOpacity>
 
-                          {/* Track Shipment Button */}
+                          {/* Invoice PDF Button */}
+                          <TouchableOpacity
+                            onPress={() => handleDownloadInvoice(order)}
+                            disabled={isDownloadingInvoiceId === order.id}
+                            style={styles.actionBtnOutline}
+                            activeOpacity={0.75}>
+                            {isDownloadingInvoiceId === order.id ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <ActivityIndicator size="small" color={MyntraColors.primary} />
+                                <Text
+                                  style={[
+                                    styles.actionBtnOutlineText,
+                                    { color: MyntraColors.primary, fontSize: 10 },
+                                  ]}>
+                                  {invoiceDownloadProgress[order.id] !== undefined
+                                    ? `${invoiceDownloadProgress[order.id]}%`
+                                    : 'PDF'}
+                                </Text>
+                              </View>
+                            ) : (
+                              <>
+                                <Ionicons name="document-outline" size={13} color={MyntraColors.primary} />
+                                <Text style={[styles.actionBtnOutlineText, { color: MyntraColors.primary }]}>
+                                  INVOICE
+                                </Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+
+                          {/* Reorder Button */}
+                          <TouchableOpacity
+                            onPress={() => handleReorder(order)}
+                            disabled={isReorderingId === order.id}
+                            style={styles.actionBtnReorder}
+                            activeOpacity={0.75}>
+                            {isReorderingId === order.id ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <>
+                                <Ionicons name="reload-outline" size={12} color="#fff" />
+                                <Text style={styles.actionBtnReorderText}>REORDER</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+
+                          {/* Track Order Toggle */}
                           <TouchableOpacity
                             onPress={() => setExpandedOrderId(isExpanded ? null : order.id)}
                             style={[
@@ -1202,7 +1682,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                             activeOpacity={0.75}>
                             <Ionicons
                               name="location-outline"
-                              size={14}
+                              size={13}
                               color={isExpanded ? MyntraColors.primary : MyntraColors.text}
                             />
                             <Text
@@ -1210,7 +1690,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                                 styles.actionBtnOutlineText,
                                 isExpanded && styles.actionBtnOutlineTextActive,
                               ]}>
-                              {isExpanded ? 'HIDE TRACKING' : 'TRACK ORDER'}
+                              {isExpanded ? 'HIDE' : 'TRACK'}
                             </Text>
                           </TouchableOpacity>
 
@@ -1233,13 +1713,36 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                               }}
                               style={styles.actionBtnPrimary}
                               activeOpacity={0.8}>
-                              <Text style={styles.actionBtnPrimaryText}>RETURN / EXCHANGE</Text>
+                              <Text style={styles.actionBtnPrimaryText}>RETURN</Text>
                             </TouchableOpacity>
                           )}
                         </View>
                       </View>
                     );
                   })}
+
+                  {/* Server-Side Pagination: Load More */}
+                  {pagination.hasMore && (
+                    <View style={styles.paginationSection}>
+                      <TouchableOpacity
+                        onPress={handleLoadMore}
+                        disabled={isLoadingMore}
+                        style={styles.loadMoreBtn}
+                        activeOpacity={0.8}>
+                        {isLoadingMore ? (
+                          <ActivityIndicator size="small" color={MyntraColors.primary} />
+                        ) : (
+                          <>
+                            <Text style={styles.loadMoreText}>LOAD MORE ORDERS</Text>
+                            <Ionicons name="chevron-down" size={16} color={MyntraColors.primary} />
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <Text style={styles.paginationSummary}>
+                        Showing {orders.length} of {pagination.total} orders
+                      </Text>
+                    </View>
+                  )}
                 </ScrollView>
               )}
             </>
@@ -1370,6 +1873,31 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                   </TouchableOpacity>
                 </View>
 
+                {returnType === 'exchange' && (
+                  <View style={styles.exchangeSizeContainer}>
+                    <Text style={styles.exchangeSizeLabel}>Select Replacement Size:</Text>
+                    <View style={styles.exchangeSizeRow}>
+                      {['S', 'M', 'L', 'XL', 'XXL'].map((sz) => (
+                        <TouchableOpacity
+                          key={sz}
+                          onPress={() => setExchangeSize(sz)}
+                          style={[
+                            styles.exchangeSizeChip,
+                            exchangeSize === sz && styles.exchangeSizeChipActive,
+                          ]}>
+                          <Text
+                            style={[
+                              styles.exchangeSizeChipText,
+                              exchangeSize === sz && styles.exchangeSizeChipTextActive,
+                            ]}>
+                            {sz}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
                 <Text style={styles.reasonPromptText}>
                   Select reason for {returnType === 'return' ? 'return' : 'exchange'}:
                 </Text>
@@ -1439,7 +1967,7 @@ const styles = StyleSheet.create({
   },
   sheetContainer: {
     width: '100%',
-    maxWidth: Platform.OS === 'web' ? 540 : undefined,
+    maxWidth: Platform.OS === 'web' ? 580 : undefined,
     height: Platform.OS === 'web' ? '95%' : '96%',
     backgroundColor: '#f5f5f7',
     borderTopLeftRadius: 20,
@@ -1483,6 +2011,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerIconBtnActive: {
+    backgroundColor: '#fff0f3',
+  },
   // Feedback Banner
   feedbackBanner: {
     flexDirection: 'row',
@@ -1510,6 +2041,45 @@ const styles = StyleSheet.create({
   },
   feedbackBannerTextError: {
     color: '#b91c1c',
+  },
+  // Reorder Result Banner
+  reorderResultBanner: {
+    backgroundColor: '#ecfdf5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#a7f3d0',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  reorderResultLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  reorderResultTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#065f46',
+  },
+  reorderResultSub: {
+    fontSize: 10.5,
+    color: '#047857',
+    marginTop: 2,
+  },
+  viewBagBtn: {
+    backgroundColor: '#047857',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  viewBagBtnText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   // Search Bar
   searchBarContainer: {
@@ -1542,11 +2112,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eaeaee',
   },
   tabBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
     paddingVertical: 11,
-    marginRight: 18,
+    marginRight: 20,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
@@ -1562,22 +2129,50 @@ const styles = StyleSheet.create({
     color: MyntraColors.primary,
     fontWeight: '800',
   },
-  tabCountBadge: {
-    backgroundColor: '#f0f0f4',
-    borderRadius: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+  // Extra Filters (Collapsible)
+  extraFiltersStrip: {
+    backgroundColor: '#fff',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e8e8ec',
+    gap: 8,
   },
-  tabCountBadgeActive: {
-    backgroundColor: '#fff0f3',
+  filterGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  tabCountText: {
+  filterGroupLabel: {
     fontSize: 10,
-    color: MyntraColors.textSecondary,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: MyntraColors.textMuted,
+    width: 80,
   },
-  tabCountTextActive: {
+  chipsScroll: {
+    gap: 6,
+    paddingRight: 10,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    backgroundColor: '#f2f2f5',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  chipActive: {
+    backgroundColor: '#fff0f3',
+    borderColor: MyntraColors.primary,
+  },
+  chipText: {
+    fontSize: 10.5,
+    color: MyntraColors.textSecondary,
+    fontWeight: '600',
+  },
+  chipTextActive: {
     color: MyntraColors.primary,
+    fontWeight: '800',
   },
   // Status states
   loadingContainer: {
@@ -1911,18 +2506,19 @@ const styles = StyleSheet.create({
   cardActionsBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     padding: 10,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f3',
     backgroundColor: MyntraColors.white,
+    flexWrap: 'wrap',
   },
   actionBtnOutline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#d2d3da',
@@ -1933,16 +2529,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff4f6',
   },
   actionBtnOutlineText: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '700',
     color: MyntraColors.text,
   },
   actionBtnOutlineTextActive: {
     color: MyntraColors.primary,
   },
+  actionBtnReorder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#0f766e',
+  },
+  actionBtnReorderText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.4,
+  },
   actionBtnDanger: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#fca5a5',
@@ -1950,21 +2561,49 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   actionBtnDangerText: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '800',
     color: '#dc2626',
   },
   actionBtnPrimary: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
     borderRadius: 6,
     backgroundColor: MyntraColors.primary,
     marginLeft: 'auto',
   },
   actionBtnPrimaryText: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '800',
     color: '#fff',
+  },
+  // Pagination
+  paginationSection: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: MyntraColors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  loadMoreText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: MyntraColors.primary,
+    letterSpacing: 0.5,
+  },
+  paginationSummary: {
+    fontSize: 11,
+    color: MyntraColors.textMuted,
+    fontWeight: '600',
   },
 
   // ==============================================================
@@ -2039,6 +2678,28 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: MyntraColors.textSecondary,
     lineHeight: 16,
+  },
+  invoiceCtaRow: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f2f2f4',
+    paddingTop: 8,
+  },
+  invoiceBtnTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff0f3',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  invoiceBtnTopText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: MyntraColors.primary,
+    letterSpacing: 0.5,
   },
   detailSectionCard: {
     backgroundColor: '#fff',
@@ -2162,6 +2823,15 @@ const styles = StyleSheet.create({
     color: MyntraColors.textSecondary,
     marginTop: 2,
   },
+  detailSellerText: {
+    fontSize: 10.5,
+    color: MyntraColors.textMuted,
+    marginTop: 2,
+  },
+  detailSellerBold: {
+    color: MyntraColors.textSecondary,
+    fontWeight: '700',
+  },
   detailMetaPillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2263,6 +2933,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: MyntraColors.text,
   },
+  taxInclusiveNote: {
+    fontSize: 10,
+    color: MyntraColors.textMuted,
+    fontStyle: 'italic',
+    marginTop: 6,
+  },
   // Payment row in details
   paymentInfoRow: {
     flexDirection: 'row',
@@ -2311,6 +2987,21 @@ const styles = StyleSheet.create({
   detailsActionsSection: {
     gap: 10,
     marginTop: 6,
+  },
+  detailsReorderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#0f766e',
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  detailsReorderText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   detailsCancelOrderBtn: {
     flexDirection: 'row',
@@ -2517,6 +3208,45 @@ const styles = StyleSheet.create({
     color: MyntraColors.textSecondary,
   },
   returnTypeTextActive: {
+    color: MyntraColors.primary,
+    fontWeight: '800',
+  },
+  exchangeSizeContainer: {
+    marginBottom: 10,
+    backgroundColor: '#f9f9fa',
+    padding: 10,
+    borderRadius: 8,
+  },
+  exchangeSizeLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: MyntraColors.text,
+    marginBottom: 6,
+  },
+  exchangeSizeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  exchangeSizeChip: {
+    width: 38,
+    height: 34,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exchangeSizeChipActive: {
+    borderColor: MyntraColors.primary,
+    backgroundColor: '#fff0f3',
+  },
+  exchangeSizeChipText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: MyntraColors.textSecondary,
+  },
+  exchangeSizeChipTextActive: {
     color: MyntraColors.primary,
     fontWeight: '800',
   },

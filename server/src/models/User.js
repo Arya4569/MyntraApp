@@ -7,6 +7,7 @@ class User {
     const { passwordHash, ...safe } = user;
     return {
       ...safe,
+      themePreference: safe.themePreference || 'system',
       // Backward compatibility aliases for existing React Native frontend
       name: safe.fullName || safe.name,
       fullName: safe.fullName || safe.name,
@@ -63,8 +64,10 @@ class User {
     password,
     gender = 'Men',
     profileImage = null,
+    themePreference = 'system',
   }) {
-    const users = this.findAll();
+    const data = db.read();
+    const users = data.users || [];
 
     const cleanName = fullName.trim();
     const cleanEmail = email ? email.trim().toLowerCase() : null;
@@ -88,12 +91,16 @@ class User {
       status: 'active',
       insiderPoints: 100, // 100 Welcome Insider Points
       profileImage: profileImage || null,
+      themePreference: ['system', 'light', 'dark'].includes(themePreference)
+        ? themePreference
+        : 'system',
       createdAt: now,
       updatedAt: now,
     };
 
     users.push(newUser);
-    db.write({ users });
+    data.users = users;
+    db.write(data);
 
     return newUser;
   }
@@ -123,7 +130,8 @@ class User {
     };
 
     users[index] = updatedUser;
-    db.write({ users });
+    data.users = users;
+    db.write(data);
 
     return updatedUser;
   }
