@@ -406,6 +406,83 @@ exports.otpLogin = async (req, res) => {
   }
 };
 
+// 2D. RESET PASSWORD VIA OTP
+exports.resetPassword = async (req, res) => {
+  try {
+    const rawIdentifier = (
+      req.body.identifier ||
+      req.body.email ||
+      req.body.mobile ||
+      ''
+    )
+      .toString()
+      .trim();
+    const { otp, newPassword } = req.body;
+    const cleanOtp = (otp || '').toString().trim();
+
+    if (!rawIdentifier) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter your registered email address or mobile number.',
+      });
+    }
+
+    if (!cleanOtp) {
+      return res.status(400).json({
+        success: false,
+        error: 'OTP code is required.',
+      });
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters long.',
+      });
+    }
+
+    const isEmail = rawIdentifier.includes('@');
+    const cleanKey = isEmail
+      ? rawIdentifier.toLowerCase()
+      : rawIdentifier.replace(/\D/g, '');
+
+    const verification = OtpStore.verify(cleanKey, cleanOtp);
+    if (!verification.valid) {
+      return res.status(400).json({
+        success: false,
+        error: verification.error || 'Invalid OTP code.',
+      });
+    }
+
+    const user = isEmail
+      ? User.findByEmail(cleanKey)
+      : User.findByMobile(cleanKey);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'No account found with this email or mobile number.',
+      });
+    }
+
+    const updatedSafeUser = await User.updatePassword(user.id, newPassword);
+    const token = generateToken(user);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You are now logged in.',
+      user: updatedSafeUser,
+      token,
+    });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to reset password. Please try again.',
+    });
+  }
+};
+
 // 3. GET CURRENT PROFILE (PROTECTED)
 exports.getMe = async (req, res) => {
   try {

@@ -41,6 +41,11 @@ interface AuthContextType {
   ) => Promise<RegisterResult>;
   registerWithBackend: (payload: RegisterPayload) => Promise<RegisterResult>;
   loginWithBackend: (payload: LoginPayload) => Promise<LoginResult>;
+  resetPassword: (
+    identifier: string,
+    otp: string,
+    newPassword: string
+  ) => Promise<LoginResult>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<boolean>;
   updateThemePreference: (theme: ThemeMode) => Promise<boolean>;
@@ -206,6 +211,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
+  const resetPassword = useCallback(
+    async (
+      identifier: string,
+      otp: string,
+      newPassword: string
+    ): Promise<LoginResult> => {
+      setAuthError(null);
+      const result = await authService.resetPassword(
+        identifier,
+        otp,
+        newPassword
+      );
+      if (result.success && result.user) {
+        setUser(result.user);
+        setToken(result.token || null);
+        setIsAuthModalVisible(false);
+      } else if (result.error) {
+        setAuthError(result.error);
+      }
+      return result;
+    },
+    []
+  );
+
   const logout = useCallback(async (): Promise<void> => {
     try {
       const currentUserId = user?.id;
@@ -284,6 +313,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         registerUser,
         registerWithBackend,
         loginWithBackend,
+        resetPassword,
         logout,
         updateUser,
         updateThemePreference,

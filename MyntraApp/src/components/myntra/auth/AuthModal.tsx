@@ -11,15 +11,15 @@ import {
   View,
 } from 'react-native';
 
+import { ForgotPasswordStep } from './ForgotPasswordStep';
 import { LoginMobileStep } from './LoginMobileStep';
 import { OtpVerificationStep } from './OtpVerificationStep';
 import { PasswordLoginStep } from './PasswordLoginStep';
 import { RegistrationStep } from './RegistrationStep';
-import { SignUpStep } from './SignUpStep';
 
 import { MyntraColors, Spacing } from '@/constants/myntra-theme';
 import { useAuth } from '@/context/AuthContext';
-import { LoginPayload, RegisterPayload } from '@/types/auth';
+import { LoginPayload } from '@/types/auth';
 
 interface AuthModalProps {
   visible: boolean;
@@ -28,7 +28,12 @@ interface AuthModalProps {
   initialMode?: 'login' | 'signup';
 }
 
-type AuthStep = 'mobile' | 'otp' | 'register' | 'signup' | 'password_login';
+type AuthStep =
+  | 'password_login'
+  | 'signup_otp'
+  | 'otp'
+  | 'register'
+  | 'forgot_password';
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   visible,
@@ -42,13 +47,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     registerUser,
     registerWithBackend,
     loginWithBackend,
+    resetPassword,
     isLiveProvider,
     authError,
     clearAuthError,
   } = useAuth();
 
   const [step, setStep] = useState<AuthStep>(
-    initialMode === 'signup' ? 'signup' : 'mobile'
+    initialMode === 'signup' ? 'signup_otp' : 'password_login'
   );
   const [mobile, setMobile] = useState('');
   const [devOtp, setDevOtp] = useState<string | undefined>(undefined);
@@ -61,7 +67,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   useEffect(() => {
     if (!visible) return;
     const timer = setTimeout(() => {
-      setStep(initialMode === 'signup' ? 'signup' : 'mobile');
+      setStep(initialMode === 'signup' ? 'signup_otp' : 'password_login');
       setErrorMessage(undefined);
       clearAuthError();
     }, 0);
@@ -69,7 +75,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   }, [visible, initialMode, clearAuthError]);
 
   const resetState = () => {
-    setStep(initialMode === 'signup' ? 'signup' : 'mobile');
+    setStep(initialMode === 'signup' ? 'signup_otp' : 'password_login');
     setMobile('');
     setDevOtp(undefined);
     setSmsNotification(null);
@@ -212,28 +218,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // Direct Sign Up with full form (backend registration)
-  const handleDirectSignUp = async (payload: RegisterPayload) => {
-    setIsLoading(true);
-    setErrorMessage(undefined);
-
-    try {
-      const result = await registerWithBackend(payload);
-      if (result.success) {
-        onSuccess?.(
-          `Welcome to Myntra, ${result.user?.name || payload.fullName}! 🎉`
-        );
-        handleClose();
-      } else {
-        setErrorMessage(result.error || 'Registration failed.');
-      }
-    } catch {
-      setErrorMessage('Could not complete registration. Please check connection.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Password Login
   const handlePasswordLogin = async (payload: LoginPayload) => {
     setIsLoading(true);
@@ -254,6 +238,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // Reset Password via OTP
+  const handleResetPassword = async (
+    email: string,
+    otp: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+    setErrorMessage(undefined);
+
+    try {
+      const result = await resetPassword(email, otp, newPassword);
+      if (result.success) {
+        onSuccess?.('Password reset successfully! Welcome back! 🎉');
+        handleClose();
+        return { success: true };
+      } else {
+        setErrorMessage(result.error || 'Failed to reset password.');
+        return { success: false, error: result.error };
+      }
+    } catch {
+      const err = 'Reset failed. Please check connection.';
+      setErrorMessage(err);
+      return { success: false, error: err };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendResetOtp = async (email: string) => {
+    setIsLoading(true);
+    setErrorMessage(undefined);
+    try {
+      const result = await sendOtp(email);
+      if (result.success) {
+        setMobile(email);
+        setDevOtp(result.devOtp);
+        setCooldownSeconds(result.cooldownSeconds || 30);
+        return result;
+      } else {
+        setErrorMessage(result.error);
+        return result;
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const currentError = errorMessage || authError || undefined;
 
   return (
@@ -269,11 +300,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <View style={styles.sheetContainer}>
             {/* Top Navigation Bar */}
             <View style={styles.navBar}>
-              {step !== 'mobile' && step !== 'signup' ? (
+              {step !== 'password_login' && step !== 'signup_otp' ? (
                 <TouchableOpacity
                   onPress={() => {
                     setErrorMessage(undefined);
-                    setStep('mobile');
+                    if (step === 'forgot_password') {
+                      setStep('password_login');
+                    } else if (step === 'otp') {
+                      setStep('signup_otp');
+                    } else if (step === 'register') {
+                      setStep('signup_otp');
+                    } else {
+                      setStep('password_login');
+                    }
                   }}
                   style={styles.navButton}
                   activeOpacity={0.7}>
@@ -292,24 +331,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </View>
               )}
 
-              {/* Tabs Switcher for Mobile / Signup Root Views */}
-              {(step === 'mobile' || step === 'signup' || step === 'password_login') && (
+              {/* Tabs Switcher for Login / Signup Root Views */}
+              {(step === 'password_login' || step === 'signup_otp') && (
                 <View style={styles.headerTabs}>
                   <TouchableOpacity
                     style={[
                       styles.headerTab,
-                      (step === 'mobile' || step === 'password_login') &&
-                        styles.headerTabActive,
+                      step === 'password_login' && styles.headerTabActive,
                     ]}
                     onPress={() => {
                       setErrorMessage(undefined);
-                      setStep('mobile');
+                      setStep('password_login');
                     }}>
                     <Text
                       style={[
                         styles.headerTabText,
-                        (step === 'mobile' || step === 'password_login') &&
-                          styles.headerTabTextActive,
+                        step === 'password_login' && styles.headerTabTextActive,
                       ]}>
                       LOG IN
                     </Text>
@@ -318,16 +355,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <TouchableOpacity
                     style={[
                       styles.headerTab,
-                      step === 'signup' && styles.headerTabActive,
+                      step === 'signup_otp' && styles.headerTabActive,
                     ]}
                     onPress={() => {
                       setErrorMessage(undefined);
-                      setStep('signup');
+                      setStep('signup_otp');
                     }}>
                     <Text
                       style={[
                         styles.headerTabText,
-                        step === 'signup' && styles.headerTabTextActive,
+                        step === 'signup_otp' && styles.headerTabTextActive,
                       ]}>
                       SIGN UP
                     </Text>
@@ -381,18 +418,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {/* Scrollable Form Body */}
             <ScrollView
-              showsVerticalScrollIndicator={false}
+              style={styles.scrollContainer}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={true}
               keyboardShouldPersistTaps="handled">
-              {step === 'mobile' && (
+              {step === 'password_login' && (
+                <PasswordLoginStep
+                  onLogin={handlePasswordLogin}
+                  onSwitchToSignUp={() => {
+                    setErrorMessage(undefined);
+                    setStep('signup_otp');
+                  }}
+                  onSwitchToOtp={() => {
+                    setErrorMessage(undefined);
+                    setStep('signup_otp');
+                  }}
+                  onForgotPassword={() => {
+                    setErrorMessage(undefined);
+                    setStep('forgot_password');
+                  }}
+                  isLoading={isLoading}
+                  errorMessage={currentError}
+                />
+              )}
+
+              {step === 'signup_otp' && (
                 <LoginMobileStep
+                  mode="signup"
                   onContinue={handleContinueMobile}
                   isLoading={isLoading}
                   errorMessage={currentError}
                   isLiveProvider={isLiveProvider}
-                  onSwitchToSignUp={() => {
-                    setErrorMessage(undefined);
-                    setStep('signup');
-                  }}
                   onSwitchToPasswordLogin={() => {
                     setErrorMessage(undefined);
                     setStep('password_login');
@@ -400,26 +456,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               )}
 
-              {step === 'password_login' && (
-                <PasswordLoginStep
-                  onLogin={handlePasswordLogin}
-                  onSwitchToSignUp={() => {
-                    setErrorMessage(undefined);
-                    setStep('signup');
-                  }}
-                  onSwitchToOtp={() => {
-                    setErrorMessage(undefined);
-                    setStep('mobile');
-                  }}
-                  isLoading={isLoading}
-                  errorMessage={currentError}
-                />
-              )}
-
-              {step === 'signup' && (
-                <SignUpStep
-                  onSignUp={handleDirectSignUp}
-                  onSwitchToLogin={() => {
+              {step === 'forgot_password' && (
+                <ForgotPasswordStep
+                  onSendOtp={handleSendResetOtp}
+                  onResetPassword={handleResetPassword}
+                  onBackToLogin={() => {
                     setErrorMessage(undefined);
                     setStep('password_login');
                   }}
@@ -433,7 +474,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   mobile={mobile}
                   onVerify={handleVerifyOtp}
                   onResend={handleResendOtp}
-                  onEditMobile={() => setStep('mobile')}
+                  onEditMobile={() => setStep('signup_otp')}
                   isLoading={isLoading}
                   errorMessage={currentError}
                   devOtp={devOtp}
@@ -461,19 +502,36 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'flex-end',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
     alignItems: 'center',
+    padding: Platform.OS === 'web' ? 16 : 0,
   },
   sheetWrapper: {
     width: '100%',
-    maxWidth: Platform.OS === 'web' ? 480 : undefined,
+    maxWidth: Platform.OS === 'web' ? 440 : undefined,
+    maxHeight: '92%',
   },
   sheetContainer: {
     backgroundColor: MyntraColors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '94%',
+    borderBottomLeftRadius: Platform.OS === 'web' ? 20 : 0,
+    borderBottomRightRadius: Platform.OS === 'web' ? 20 : 0,
+    maxHeight: '100%',
     overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  scrollContainer: {
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
   },
   navBar: {
     flexDirection: 'row',

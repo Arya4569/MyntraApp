@@ -319,6 +319,52 @@ class AuthService {
   }
 
   /**
+   * Reset Password with OTP verification
+   */
+  async resetPassword(
+    identifier: string,
+    otp: string,
+    newPassword: string
+  ): Promise<LoginResult> {
+    const cleanKey = identifier.trim().toLowerCase();
+    const cleanOtp = otp.trim();
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: cleanKey,
+          otp: cleanOtp,
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        if (data.token && data.user) {
+          await this.saveSession(data.user, data.token);
+        }
+        return {
+          success: true,
+          user: data.user,
+          token: data.token,
+          message: data.message || 'Password reset successfully!',
+        };
+      }
+      return {
+        success: false,
+        error: data.error || 'Failed to reset password.',
+      };
+    } catch {
+      return {
+        success: false,
+        error: 'Network error occurred while resetting password.',
+      };
+    }
+  }
+
+  /**
    * Initiate OTP request with rate limiting and expiration (Email or Mobile)
    */
   async sendOtp(identifier: string): Promise<SendOtpResult> {

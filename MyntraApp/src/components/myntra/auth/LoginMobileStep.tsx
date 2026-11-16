@@ -19,6 +19,7 @@ interface LoginMobileStepProps {
   isLiveProvider?: boolean;
   onSwitchToSignUp?: () => void;
   onSwitchToPasswordLogin?: () => void;
+  mode?: 'login' | 'signup';
 }
 
 export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
@@ -27,6 +28,7 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
   errorMessage,
   onSwitchToSignUp,
   onSwitchToPasswordLogin,
+  mode = 'signup',
 }) => {
   const [email, setEmail] = useState('');
   const [inputTouched, setInputTouched] = useState(false);
@@ -73,13 +75,21 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
       {/* Main Content Area */}
       <View style={styles.formContainer}>
         <View style={styles.headingRow}>
-          <Text style={styles.title}>Login</Text>
-          <Text style={styles.orText}>or</Text>
-          <Text style={styles.title}>Signup</Text>
+          {mode === 'signup' ? (
+            <Text style={styles.title}>Sign Up with OTP</Text>
+          ) : (
+            <>
+              <Text style={styles.title}>Login</Text>
+              <Text style={styles.orText}>or</Text>
+              <Text style={styles.title}>Signup</Text>
+            </>
+          )}
         </View>
 
         <Text style={styles.inputGuideSubtitle}>
-          Enter your registered Email to receive a verification OTP
+          {mode === 'signup'
+            ? 'Enter your Email to verify with OTP and create your account'
+            : 'Enter your registered Email to receive a verification OTP'}
         </Text>
 
         {/* Clean Email Input Field */}

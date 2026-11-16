@@ -8,6 +8,7 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/send-otp', authController.sendOtp);
 router.post('/otp-login', authController.otpLogin);
+router.post('/reset-password', authController.resetPassword);
 router.post('/send-sms', authController.sendSms);
 router.post('/logout', optionalAuth, authController.logout);
 

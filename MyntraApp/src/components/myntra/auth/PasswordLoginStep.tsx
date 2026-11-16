@@ -17,6 +17,7 @@ interface PasswordLoginStepProps {
   onLogin: (payload: LoginPayload) => Promise<void>;
   onSwitchToSignUp: () => void;
   onSwitchToOtp: () => void;
+  onForgotPassword: () => void;
   isLoading: boolean;
   errorMessage?: string;
 }
@@ -25,6 +26,7 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
   onLogin,
   onSwitchToSignUp,
   onSwitchToOtp,
+  onForgotPassword,
   isLoading,
   errorMessage,
 }) => {
@@ -145,6 +147,16 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
           {touched.password && !isPasswordValid && (
             <Text style={styles.fieldError}>Password is required.</Text>
           )}
+        </View>
+
+        {/* Forgot Password Link */}
+        <View style={styles.forgotPasswordRow}>
+          <TouchableOpacity
+            onPress={onForgotPassword}
+            activeOpacity={0.7}
+            disabled={isLoading}>
+            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Submit Button */}
@@ -318,6 +330,16 @@ const styles = StyleSheet.create({
     padding: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  forgotPasswordRow: {
+    alignItems: 'flex-end',
+    marginBottom: Spacing.md,
+    marginTop: -4,
+  },
+  forgotPasswordText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: MyntraColors.primary,
   },
   loginBtn: {
     height: 50,

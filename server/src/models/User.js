@@ -135,6 +135,28 @@ class User {
 
     return updatedUser;
   }
+
+  static async updatePassword(id, newPassword) {
+    const data = db.read();
+    const users = data.users || [];
+    const index = users.findIndex((u) => u.id === id);
+
+    if (index === -1) return null;
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    users[index] = {
+      ...users[index],
+      passwordHash,
+      updatedAt: new Date().toISOString(),
+    };
+
+    data.users = users;
+    db.write(data);
+
+    return User.sanitize(users[index]);
+  }
 }
 
 module.exports = User;
