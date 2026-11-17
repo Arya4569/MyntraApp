@@ -201,7 +201,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           effectiveMobile,
           name,
           effectiveEmail,
-          gender
+          gender,
+          password
         );
       }
 
@@ -397,7 +398,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </View>
                   <Text style={styles.smsAppTitle}>
                     {mobile.includes('@')
-                      ? 'DEMO EMAIL OTP (OFFLINE)'
+                      ? 'EMAIL VERIFICATION CODE'
                       : 'MESSAGES'}
                   </Text>
                   <Text style={styles.smsTime}>• now</Text>
@@ -415,9 +416,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     : 'VK-MYNTRA'}
                 </Text>
                 <Text style={styles.smsText}>
-                  Your code is{' '}
+                  Your verification code is{' '}
                   <Text style={styles.smsOtpBold}>{smsNotification}</Text>. (Demo
-                  mode while backend is offline).
+                  mode — tap below to auto-fill).
                 </Text>
 
                 <TouchableOpacity
@@ -495,6 +496,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   errorMessage={currentError}
                   devOtp={devOtp}
                   cooldownSeconds={cooldownSeconds}
+                  mode="signup"
                 />
               )}
 

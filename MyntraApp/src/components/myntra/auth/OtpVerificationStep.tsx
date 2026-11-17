@@ -21,6 +21,7 @@ interface OtpVerificationStepProps {
   errorMessage?: string;
   devOtp?: string;
   cooldownSeconds?: number;
+  mode?: 'signup' | 'login' | 'reset';
 }
 
 export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
@@ -31,7 +32,9 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
   onSwitchToPasswordLogin,
   isLoading,
   errorMessage,
+  devOtp,
   cooldownSeconds = 30,
+  mode = 'signup',
 }) => {
   const [otp, setOtp] = useState('');
   const [secondsRemaining, setSecondsRemaining] = useState(cooldownSeconds);
@@ -87,7 +90,9 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
         </View>
 
         <Text style={styles.title}>
-          {isEmail ? 'Verify Email with OTP' : 'Verify with OTP'}
+          {mode === 'signup'
+            ? (isEmail ? 'Verify Email to Sign Up' : 'Verify to Sign Up')
+            : (isEmail ? 'Verify Email with OTP' : 'Verify with OTP')}
         </Text>
         <Text style={styles.subtitle}>
           Enter the 4-digit verification code sent to
@@ -106,7 +111,9 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
 
         {isEmail && (
           <Text style={styles.inboxHintText}>
-            📩 Check your inbox & spam folder for the code
+            {devOtp
+              ? '⚡ Tap the auto-fill banner above or enter 1234 to verify'
+              : '📩 Check your inbox & spam folder for the code'}
           </Text>
         )}
       </View>
@@ -186,12 +193,20 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
             activeOpacity={0.7}
             style={styles.extraLinkRow}
             onPress={onSwitchToPasswordLogin}>
-            <Text style={styles.extraLinkText}>Log in using Password</Text>
+            <Text style={styles.extraLinkText}>
+              {mode === 'signup'
+                ? 'Already have an account? Log In'
+                : 'Log in using Password'}
+            </Text>
           </TouchableOpacity>
         )}
 
         <View style={styles.helpRow}>
-          <Text style={styles.helpText}>Have trouble logging in? </Text>
+          <Text style={styles.helpText}>
+            {mode === 'signup'
+              ? 'Need help signing up? '
+              : 'Have trouble logging in? '}
+          </Text>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setShowHelpAlert(!showHelpAlert)}>

@@ -184,7 +184,9 @@ class AuthService {
 
       // Also sync into local cache
       const registry = await this.getUsersRegistry();
-      registry[cleanMobile] = user;
+      delete registry[''];
+      if (cleanMobile) registry[cleanMobile] = user;
+      if (cleanEmail) registry[cleanEmail] = user;
       await AsyncStorage.setItem(
         STORAGE_KEYS.USERS_REGISTRY,
         JSON.stringify(registry)
@@ -203,7 +205,8 @@ class AuthService {
         cleanMobile,
         cleanName,
         cleanEmail,
-        payload.gender || 'Men'
+        payload.gender || 'Men',
+        payload.password
       );
     }
   }
@@ -261,15 +264,19 @@ class AuthService {
     } catch {
       console.warn('Backend unavailable during login, checking local demo fallback.');
       const registry = await this.getUsersRegistry();
+      delete registry[''];
+
+      const targetLower = target.toLowerCase();
       let localUser =
         registry[target] ||
+        registry[targetLower] ||
         Object.values(registry).find(
           (u) =>
-            u.email?.toLowerCase() === target.toLowerCase() ||
-            u.mobile === target.replace(/\D/g, '')
+            u.email?.toLowerCase() === targetLower ||
+            (u.mobile && u.mobile === target.replace(/\D/g, ''))
         );
 
-      if (!localUser && payload.password.length >= 6) {
+      if (!localUser && payload.password && payload.password.length >= 6) {
         const displayName = target.includes('@')
           ? target.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ')
           : 'Shopper';
@@ -277,7 +284,7 @@ class AuthService {
           id: `usr-${Date.now()}`,
           name: displayName.charAt(0).toUpperCase() + displayName.slice(1),
           fullName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
-          email: target.includes('@') ? target.toLowerCase() : undefined,
+          email: target.includes('@') ? targetLower : undefined,
           mobile: target.includes('@') ? '' : target.replace(/\D/g, ''),
           role: 'customer',
           status: 'active',
@@ -285,6 +292,10 @@ class AuthService {
           insiderPoints: 200,
         };
         registry[target] = localUser;
+        if (localUser.email) registry[localUser.email] = localUser;
+        if (localUser.mobile) registry[localUser.mobile] = localUser;
+        delete registry[''];
+
         await AsyncStorage.setItem(
           STORAGE_KEYS.USERS_REGISTRY,
           JSON.stringify(registry)
@@ -660,7 +671,8 @@ class AuthService {
     mobile: string,
     name: string,
     email?: string,
-    gender?: 'Men' | 'Women' | 'Other'
+    gender?: 'Men' | 'Women' | 'Other',
+    password?: string
   ): Promise<RegisterResult> {
     const cleanNumber = mobile.trim().replace(/\D/g, '');
     const cleanName = name.trim();
@@ -681,12 +693,23 @@ class AuthService {
     }
 
     const registry = await this.getUsersRegistry();
+    // Clean up any empty string key pollution
+    delete registry[''];
 
-    // Prevent duplicate accounts
-    if (registry[cleanNumber]) {
+    // Check duplicate accounts only against valid keys
+    if (cleanNumber && registry[cleanNumber]) {
       return {
         success: false,
         error: 'An account with this mobile number already exists.',
+      };
+    }
+
+    if (cleanEmail && registry[cleanEmail]) {
+      // Existing user registering with same email -> log in
+      await this.saveSession(registry[cleanEmail]);
+      return {
+        success: true,
+        user: registry[cleanEmail],
       };
     }
 
@@ -704,14 +727,17 @@ class AuthService {
       insiderPoints: 100, // Welcome bonus points
     };
 
-    // Save to registry
-    registry[cleanNumber] = newUser;
+    // Save to registry indexed by email and/or mobile
+    if (cleanEmail) registry[cleanEmail] = newUser;
+    if (cleanNumber) registry[cleanNumber] = newUser;
+    delete registry[''];
+
     await AsyncStorage.setItem(
       STORAGE_KEYS.USERS_REGISTRY,
       JSON.stringify(registry)
     );
 
-    // Save as active session
+    // Save active session
     await this.saveSession(newUser);
 
     return {

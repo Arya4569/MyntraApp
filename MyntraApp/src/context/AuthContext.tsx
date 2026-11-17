@@ -37,7 +37,8 @@ interface AuthContextType {
     mobile: string,
     name: string,
     email?: string,
-    gender?: 'Men' | 'Women' | 'Other'
+    gender?: 'Men' | 'Women' | 'Other',
+    password?: string
   ) => Promise<RegisterResult>;
   registerWithBackend: (payload: RegisterPayload) => Promise<RegisterResult>;
   loginWithBackend: (payload: LoginPayload) => Promise<LoginResult>;
@@ -165,9 +166,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       mobile: string,
       name: string,
       email?: string,
-      gender?: 'Men' | 'Women' | 'Other'
+      gender?: 'Men' | 'Women' | 'Other',
+      password?: string
     ): Promise<RegisterResult> => {
-      const result = await authService.registerUser(mobile, name, email, gender);
+      const result = await authService.registerUser(
+        mobile,
+        name,
+        email,
+        gender,
+        password
+      );
       if (result.success && result.user) {
         setUser(result.user);
         const storedToken = await authService.getToken();
