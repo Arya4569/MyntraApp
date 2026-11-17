@@ -112,6 +112,139 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
     }, 1200);
   };
 
+  const handlePickImage = () => {
+    if (typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e: any) => {
+        const file = e.target?.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUri = event.target?.result as string;
+          if (dataUri) {
+            processUploadedImage(file.name, dataUri);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    }
+  };
+
+  const processUploadedImage = (fileName: string, imageUri: string) => {
+    const cleanName = fileName.toLowerCase();
+
+    let detectedCategory = 'All';
+    let detectedQuery = 'Trending';
+    let tags = ['Visual Match', 'Custom Outfit'];
+
+    if (
+      cleanName.includes('shirt') ||
+      cleanName.includes('tshirt') ||
+      cleanName.includes('tee') ||
+      cleanName.includes('top')
+    ) {
+      detectedCategory = 'Men';
+      detectedQuery = 'T-Shirt';
+      tags = ['Cotton T-Shirt', 'Casual Wear', 'Comfort Fit'];
+    } else if (
+      cleanName.includes('dress') ||
+      cleanName.includes('gown') ||
+      cleanName.includes('frock') ||
+      cleanName.includes('skirt')
+    ) {
+      detectedCategory = 'Women';
+      detectedQuery = 'Dress';
+      tags = ['Chic Dress', 'Floral Pastel', 'Summer Vibe'];
+    } else if (
+      cleanName.includes('kurta') ||
+      cleanName.includes('saree') ||
+      cleanName.includes('ethnic') ||
+      cleanName.includes('anarkali')
+    ) {
+      detectedCategory = 'Women';
+      detectedQuery = 'Kurta';
+      tags = ['Ethnic Kurta', 'Festive Zari', 'Traditional'];
+    } else if (
+      cleanName.includes('shoe') ||
+      cleanName.includes('sneaker') ||
+      cleanName.includes('boot') ||
+      cleanName.includes('footwear') ||
+      cleanName.includes('sandal')
+    ) {
+      detectedCategory = 'Sports';
+      detectedQuery = 'Sneakers';
+      tags = ['Sneakers', 'Streetwear', 'Athletic Grip'];
+    } else if (
+      cleanName.includes('jean') ||
+      cleanName.includes('denim') ||
+      cleanName.includes('pant') ||
+      cleanName.includes('trouser')
+    ) {
+      detectedCategory = 'Men';
+      detectedQuery = 'Jeans';
+      tags = ['Denim Jeans', 'Washed Finish', 'Casual Wear'];
+    } else if (
+      cleanName.includes('jacket') ||
+      cleanName.includes('coat') ||
+      cleanName.includes('hoodie') ||
+      cleanName.includes('blazer')
+    ) {
+      detectedCategory = 'Men';
+      detectedQuery = 'Jacket';
+      tags = ['Denim Bomber', 'Outerwear', 'Smart Casual'];
+    } else if (
+      cleanName.includes('bag') ||
+      cleanName.includes('purse') ||
+      cleanName.includes('tote') ||
+      cleanName.includes('backpack')
+    ) {
+      detectedCategory = 'Women';
+      detectedQuery = 'Bag';
+      tags = ['Handbag', 'Vegan Leather', 'Structured Bag'];
+    } else if (
+      cleanName.includes('watch') ||
+      cleanName.includes('time') ||
+      cleanName.includes('clock')
+    ) {
+      detectedCategory = 'Men';
+      detectedQuery = 'Watch';
+      tags = ['Chronograph Watch', 'Leather Strap', 'Formal'];
+    }
+
+    const uploadedPreset: FashionPreset = {
+      id: `upload-${Date.now()}`,
+      title: 'Uploaded Outfit Photo',
+      category: detectedCategory,
+      query: detectedQuery,
+      image: imageUri,
+      detectedTags: tags,
+    };
+
+    setSelectedPreset(uploadedPreset);
+    setIsScanning(true);
+    setMatchingResults([]);
+
+    setTimeout(() => {
+      setIsScanning(false);
+      const queryLower = detectedQuery.toLowerCase();
+      let matches = products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(queryLower) ||
+          p.subcategory.toLowerCase().includes(queryLower) ||
+          (p.brand && p.brand.toLowerCase().includes(queryLower)) ||
+          p.category.toLowerCase() === detectedCategory.toLowerCase()
+      );
+      if (matches.length === 0) {
+        matches = products.slice(0, 6);
+      }
+      setMatchingResults(matches.slice(0, 6));
+    }, 1200);
+  };
+
   const handleApplyPreset = (preset: FashionPreset) => {
     onApplyCategoryOrQuery(preset.query);
     handleClose();
@@ -152,21 +285,37 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
         {/* Camera Viewfinder Area */}
         <View style={styles.viewfinderContainer}>
           {selectedPreset ? (
-            <Image
-              source={{ uri: selectedPreset.image }}
-              style={styles.viewfinderImage}
-              resizeMode="cover"
-            />
+            <>
+              <Image
+                source={{ uri: selectedPreset.image }}
+                style={styles.viewfinderImage}
+                resizeMode="cover"
+              />
+              <TouchableOpacity
+                style={styles.reUploadBtn}
+                onPress={handlePickImage}
+                activeOpacity={0.8}>
+                <Ionicons name="camera-reverse" size={14} color="#fff" />
+                <Text style={styles.reUploadText}>Upload Another</Text>
+              </TouchableOpacity>
+            </>
           ) : (
             <View style={styles.simulatedCamera}>
               <Ionicons
                 name="camera"
-                size={64}
-                color="rgba(255, 255, 255, 0.25)"
+                size={54}
+                color="rgba(255, 255, 255, 0.4)"
               />
               <Text style={styles.cameraHelpText}>
-                Point camera at clothing, shoes, or select an outfit preset below
+                Upload any outfit photo or use camera to find matching styles
               </Text>
+              <TouchableOpacity
+                style={styles.uploadPromptBtn}
+                onPress={handlePickImage}
+                activeOpacity={0.85}>
+                <Ionicons name="cloud-upload" size={18} color="#fff" />
+                <Text style={styles.uploadPromptText}>UPLOAD OUTFIT PHOTO</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -218,17 +367,14 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
             {/* Shutter / Scan Button */}
             <TouchableOpacity
               style={styles.shutterBtn}
-              onPress={() => {
-                const target = selectedPreset || PRESET_STYLES[0];
-                handleSimulateScan(target);
-              }}
+              onPress={handlePickImage}
               activeOpacity={0.85}>
               <View style={styles.shutterInner} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.controlSmallBtn}
-              onPress={() => handleSimulateScan(PRESET_STYLES[1])}
+              onPress={handlePickImage}
               activeOpacity={0.8}>
               <Ionicons name="images-outline" size={22} color="#fff" />
             </TouchableOpacity>
@@ -372,6 +518,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 18,
+  },
+  uploadPromptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ff3f6c',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginTop: 18,
+    shadowColor: '#ff3f6c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  uploadPromptText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  reUploadBtn: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    zIndex: 10,
+  },
+  reUploadText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '600',
   },
   frameCornerTL: {
     position: 'absolute',
