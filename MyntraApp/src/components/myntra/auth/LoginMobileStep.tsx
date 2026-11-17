@@ -65,26 +65,32 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
         />
         <View style={styles.bannerOverlay}>
           <View style={styles.discountTag}>
-            <Text style={styles.discountTagText}>FLAT ₹500 OFF</Text>
+            <Text style={styles.discountTagText}>
+              {mode === 'signup' ? 'NEW USER OFFER' : 'WELCOME BACK'}
+            </Text>
           </View>
-          <Text style={styles.bannerTitle}>Unlock Exclusive Offers</Text>
-          <Text style={styles.bannerSub}>Special Offers on your first order</Text>
+          <Text style={styles.bannerTitle}>
+            {mode === 'signup' ? 'Sign Up on Myntra' : 'Unlock Exclusive Offers'}
+          </Text>
+          <Text style={styles.bannerSub}>
+            {mode === 'signup'
+              ? 'Create an account & get Flat ₹500 OFF'
+              : 'Special Offers on your first order'}
+          </Text>
         </View>
       </View>
 
       {/* Main Content Area */}
       <View style={styles.formContainer}>
         <View style={styles.headingRow}>
-          {mode === 'signup' ? (
-            <Text style={styles.title}>Create New Account</Text>
-          ) : (
-            <Text style={styles.title}>Log In with OTP</Text>
-          )}
+          <Text style={styles.title}>
+            {mode === 'signup' ? 'Sign Up' : 'Log In with OTP'}
+          </Text>
         </View>
 
         <Text style={styles.inputGuideSubtitle}>
           {mode === 'signup'
-            ? 'Enter your Email to verify with OTP and create your account'
+            ? 'Enter your Email to receive a verification OTP and create account'
             : 'Enter your registered Email to receive a verification OTP'}
         </Text>
 
@@ -148,78 +154,81 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
           {isLoading ? (
             <ActivityIndicator color={MyntraColors.white} size="small" />
           ) : (
-            <Text style={styles.continueButtonText}>CONTINUE</Text>
+            <Text style={styles.continueButtonText}>
+              {mode === 'signup' ? 'SEND SIGN UP OTP' : 'CONTINUE'}
+            </Text>
           )}
         </TouchableOpacity>
 
-        {/* Authentic Myntra: Have trouble logging in? Get help */}
-        <View style={styles.helpContainer}>
-          <Text style={styles.helpText}>Have trouble logging in? </Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setShowHelpAlert(!showHelpAlert)}>
-            <Text style={styles.helpLink}>Get help</Text>
-          </TouchableOpacity>
-        </View>
-
-        {showHelpAlert && (
-          <View style={styles.helpBox}>
-            <View style={styles.helpBoxHeader}>
-              <Ionicons name="help-circle-outline" size={16} color={MyntraColors.primary} />
-              <Text style={styles.helpBoxTitle}>Myntra 24x7 Helpdesk</Text>
-            </View>
-            <Text style={styles.helpBoxDesc}>
-              Make sure your mobile number is active to receive SMS OTP. If you do not receive an OTP within 30 seconds, you can tap Resend OTP or reach support at support@myntra.com.
-            </Text>
-          </View>
-        )}
-
-        {/* Divider */}
-        <View style={styles.orDividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.orDividerText}>OR</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Alternative Actions: Password Login & Switch mode */}
-        <View style={styles.altActionsContainer}>
-          {onSwitchToPasswordLogin && (
-            <TouchableOpacity
-              onPress={onSwitchToPasswordLogin}
-              style={styles.altBtn}
-              activeOpacity={0.7}
-              disabled={isLoading}>
-              <Ionicons name="key-outline" size={16} color={MyntraColors.text} />
-              <Text style={styles.altBtnText}>Log in with Password</Text>
-            </TouchableOpacity>
-          )}
-
-          {mode === 'signup' ? (
-            onSwitchToPasswordLogin && (
+        {mode === 'signup' ? (
+          /* Clean Dedicated Sign-Up Footer: switches to Log In */
+          onSwitchToPasswordLogin && (
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>Already have an account? </Text>
               <TouchableOpacity
                 onPress={onSwitchToPasswordLogin}
-                style={styles.signUpBtn}
                 activeOpacity={0.7}
                 disabled={isLoading}>
-                <Text style={styles.signUpBtnText}>
-                  Already have an account? <Text style={styles.signUpHighlight}>Log In</Text>
-                </Text>
+                <Text style={styles.footerLink}>Log In</Text>
               </TouchableOpacity>
-            )
-          ) : (
-            onSwitchToSignUp && (
+            </View>
+          )
+        ) : (
+          /* Log In with OTP Footer Actions */
+          <>
+            <View style={styles.helpContainer}>
+              <Text style={styles.helpText}>Have trouble logging in? </Text>
               <TouchableOpacity
-                onPress={onSwitchToSignUp}
-                style={styles.signUpBtn}
                 activeOpacity={0.7}
-                disabled={isLoading}>
-                <Text style={styles.signUpBtnText}>
-                  New to Myntra? <Text style={styles.signUpHighlight}>Create Account</Text>
-                </Text>
+                onPress={() => setShowHelpAlert(!showHelpAlert)}>
+                <Text style={styles.helpLink}>Get help</Text>
               </TouchableOpacity>
-            )
-          )}
-        </View>
+            </View>
+
+            {showHelpAlert && (
+              <View style={styles.helpBox}>
+                <View style={styles.helpBoxHeader}>
+                  <Ionicons name="help-circle-outline" size={16} color={MyntraColors.primary} />
+                  <Text style={styles.helpBoxTitle}>Myntra 24x7 Helpdesk</Text>
+                </View>
+                <Text style={styles.helpBoxDesc}>
+                  Please check your email inbox and spam folder. If you do not receive an OTP within 30 seconds, tap Resend OTP.
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.orDividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.orDividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <View style={styles.altActionsContainer}>
+              {onSwitchToPasswordLogin && (
+                <TouchableOpacity
+                  onPress={onSwitchToPasswordLogin}
+                  style={styles.altBtn}
+                  activeOpacity={0.7}
+                  disabled={isLoading}>
+                  <Ionicons name="key-outline" size={16} color={MyntraColors.text} />
+                  <Text style={styles.altBtnText}>Log in with Password</Text>
+                </TouchableOpacity>
+              )}
+
+              {onSwitchToSignUp && (
+                <TouchableOpacity
+                  onPress={onSwitchToSignUp}
+                  style={styles.signUpBtn}
+                  activeOpacity={0.7}
+                  disabled={isLoading}>
+                  <Text style={styles.signUpBtnText}>
+                    New to Myntra? <Text style={styles.signUpHighlight}>Create Account</Text>
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -456,6 +465,22 @@ const styles = StyleSheet.create({
     color: MyntraColors.textSecondary,
   },
   signUpHighlight: {
+    color: MyntraColors.primary,
+    fontWeight: '800',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  footerText: {
+    fontSize: 13,
+    color: MyntraColors.textSecondary,
+    fontWeight: '500',
+  },
+  footerLink: {
+    fontSize: 13,
     color: MyntraColors.primary,
     fontWeight: '800',
   },
