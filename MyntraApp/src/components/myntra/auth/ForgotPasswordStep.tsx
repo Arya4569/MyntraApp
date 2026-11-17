@@ -69,6 +69,9 @@ export const ForgotPasswordStep: React.FC<ForgotPasswordStepProps> = ({
     if (res.success) {
       setStep('verify_and_reset');
       setCooldown(res.cooldownSeconds || 30);
+      if (res.devOtp) {
+        setOtp(res.devOtp);
+      }
     } else {
       setLocalError(res.error || 'Failed to send OTP.');
     }

@@ -59,6 +59,13 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
     return () => clearInterval(timer);
   }, [secondsRemaining]);
 
+  // Auto-fill devOtp in demo / simulation mode
+  useEffect(() => {
+    if (devOtp && !otp) {
+      setOtp(devOtp);
+    }
+  }, [devOtp]);
+
   const handleOtpChange = (text: string) => {
     const digitsOnly = text.replace(/\D/g, '').slice(0, 4);
     setOtp(digitsOnly);
@@ -109,12 +116,30 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
           </TouchableOpacity>
         </View>
 
-        {isEmail && (
+        {isEmail && !devOtp && (
           <Text style={styles.inboxHintText}>
             📩 Check your inbox & spam folder for the 4-digit code
           </Text>
         )}
       </View>
+
+      {/* Demo / Web Fallback OTP Banner */}
+      {devOtp ? (
+        <View style={styles.devOtpContainer}>
+          <View style={styles.devOtpLeft}>
+            <Ionicons name="key" size={16} color="#059669" />
+            <Text style={styles.devOtpLabel}>
+              Demo OTP: <Text style={styles.devOtpValue}>{devOtp}</Text>
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.devOtpButton}
+            onPress={() => handleOtpChange(devOtp)}
+            activeOpacity={0.8}>
+            <Text style={styles.devOtpButtonText}>Auto-Fill</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* 4-Digit OTP Cells */}
       <View style={styles.otpInputContainer}>
@@ -438,5 +463,45 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
+  },
+  devOtpContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  devOtpLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  devOtpLabel: {
+    fontSize: 12.5,
+    color: '#065f46',
+    fontWeight: '500',
+  },
+  devOtpValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#047857',
+    letterSpacing: 1.5,
+  },
+  devOtpButton: {
+    backgroundColor: '#059669',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  devOtpButtonText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
