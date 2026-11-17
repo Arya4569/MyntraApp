@@ -30,7 +30,6 @@ interface AuthModalProps {
 
 type AuthStep =
   | 'password_login'
-  | 'login_otp'
   | 'signup_otp'
   | 'otp'
   | 'register'
@@ -57,7 +56,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [step, setStep] = useState<AuthStep>(
     initialMode === 'signup' ? 'signup_otp' : 'password_login'
   );
-  const [otpSource, setOtpSource] = useState<'signup' | 'login'>('signup');
   const [mobile, setMobile] = useState('');
   const [devOtp, setDevOtp] = useState<string | undefined>(undefined);
   const [smsNotification, setSmsNotification] = useState<string | null>(null);
@@ -70,7 +68,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (!visible) return;
     const timer = setTimeout(() => {
       setStep(initialMode === 'signup' ? 'signup_otp' : 'password_login');
-      setOtpSource(initialMode === 'signup' ? 'signup' : 'login');
       setErrorMessage(undefined);
       clearAuthError();
     }, 0);
@@ -79,7 +76,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const resetState = () => {
     setStep(initialMode === 'signup' ? 'signup_otp' : 'password_login');
-    setOtpSource(initialMode === 'signup' ? 'signup' : 'login');
     setMobile('');
     setDevOtp(undefined);
     setSmsNotification(null);
@@ -93,14 +89,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onClose();
   };
 
-  // Step 1: Submit Mobile / Email -> Send OTP
-  const handleContinueMobile = async (
-    enteredMobile: string,
-    source: 'signup' | 'login' = 'signup'
-  ) => {
+  // Step 1: Submit Email for Sign Up -> Send OTP
+  const handleContinueMobile = async (enteredMobile: string) => {
     setIsLoading(true);
     setErrorMessage(undefined);
-    setOtpSource(source);
 
     try {
       const result = await sendOtp(enteredMobile);
@@ -135,7 +127,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       if (result.success) {
         setSmsNotification(null);
-        if (otpSource === 'signup' || result.isNewUser) {
+        if (result.isNewUser) {
           // New user needs to complete profile
           setStep('register');
         } else {
@@ -308,16 +300,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <View style={styles.sheetContainer}>
             {/* Top Navigation Bar */}
             <View style={styles.navBar}>
-              {step !== 'password_login' &&
-              step !== 'signup_otp' &&
-              step !== 'login_otp' ? (
+              {step !== 'password_login' && step !== 'signup_otp' ? (
                 <TouchableOpacity
                   onPress={() => {
                     setErrorMessage(undefined);
                     if (step === 'forgot_password') {
                       setStep('password_login');
                     } else if (step === 'otp') {
-                      setStep(otpSource === 'signup' ? 'signup_otp' : 'login_otp');
+                      setStep('signup_otp');
                     } else if (step === 'register') {
                       setStep('signup_otp');
                     } else {
@@ -342,15 +332,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               )}
 
               {/* Tabs Switcher for Login / Signup Root Views */}
-              {(step === 'password_login' ||
-                step === 'login_otp' ||
-                step === 'signup_otp') && (
+              {(step === 'password_login' || step === 'signup_otp') && (
                 <View style={styles.headerTabs}>
                   <TouchableOpacity
                     style={[
                       styles.headerTab,
-                      (step === 'password_login' || step === 'login_otp') &&
-                        styles.headerTabActive,
+                      step === 'password_login' && styles.headerTabActive,
                     ]}
                     onPress={() => {
                       setErrorMessage(undefined);
@@ -359,8 +346,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <Text
                       style={[
                         styles.headerTabText,
-                        (step === 'password_login' || step === 'login_otp') &&
-                          styles.headerTabTextActive,
+                        step === 'password_login' && styles.headerTabTextActive,
                       ]}>
                       LOG IN
                     </Text>
@@ -459,10 +445,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setErrorMessage(undefined);
                     setStep('signup_otp');
                   }}
-                  onSwitchToOtp={() => {
-                    setErrorMessage(undefined);
-                    setStep('login_otp');
-                  }}
                   onForgotPassword={() => {
                     setErrorMessage(undefined);
                     setStep('forgot_password');
@@ -472,28 +454,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               )}
 
-              {step === 'login_otp' && (
-                <LoginMobileStep
-                  mode="login"
-                  onContinue={(val) => handleContinueMobile(val, 'login')}
-                  isLoading={isLoading}
-                  errorMessage={currentError}
-                  isLiveProvider={isLiveProvider}
-                  onSwitchToPasswordLogin={() => {
-                    setErrorMessage(undefined);
-                    setStep('password_login');
-                  }}
-                  onSwitchToSignUp={() => {
-                    setErrorMessage(undefined);
-                    setStep('signup_otp');
-                  }}
-                />
-              )}
-
               {step === 'signup_otp' && (
                 <LoginMobileStep
                   mode="signup"
-                  onContinue={(val) => handleContinueMobile(val, 'signup')}
+                  onContinue={handleContinueMobile}
                   isLoading={isLoading}
                   errorMessage={currentError}
                   isLiveProvider={isLiveProvider}
@@ -522,9 +486,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   mobile={mobile}
                   onVerify={handleVerifyOtp}
                   onResend={handleResendOtp}
-                  onEditMobile={() =>
-                    setStep(otpSource === 'signup' ? 'signup_otp' : 'login_otp')
-                  }
+                  onEditMobile={() => setStep('signup_otp')}
                   onSwitchToPasswordLogin={() => {
                     setErrorMessage(undefined);
                     setStep('password_login');

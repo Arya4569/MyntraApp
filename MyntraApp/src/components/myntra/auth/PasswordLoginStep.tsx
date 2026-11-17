@@ -16,7 +16,7 @@ import { LoginPayload } from '@/types/auth';
 interface PasswordLoginStepProps {
   onLogin: (payload: LoginPayload) => Promise<void>;
   onSwitchToSignUp: () => void;
-  onSwitchToOtp: () => void;
+  onSwitchToOtp?: () => void;
   onForgotPassword: () => void;
   isLoading: boolean;
   errorMessage?: string;
@@ -170,16 +170,6 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
           ) : (
             <Text style={styles.loginBtnText}>LOG IN</Text>
           )}
-        </TouchableOpacity>
-
-        {/* Alternative: Login with OTP */}
-        <TouchableOpacity
-          onPress={onSwitchToOtp}
-          style={styles.otpSwitchBtn}
-          activeOpacity={0.7}
-          disabled={isLoading}>
-          <Ionicons name="phone-portrait-outline" size={16} color={MyntraColors.primary} />
-          <Text style={styles.otpSwitchText}>Log in with OTP</Text>
         </TouchableOpacity>
 
         {/* Sign Up Link */}
