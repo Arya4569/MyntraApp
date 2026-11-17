@@ -106,8 +106,9 @@ exports.sendOtpEmail = async ({ to, otp, name }) => {
   `;
 
   try {
+    const fromAddress = (process.env.EMAIL_USER || 'aryakarande45@gmail.com').trim();
     const info = await mailTransporter.sendMail({
-      from: `"Myntra Fashion" <${process.env.EMAIL_USER}>`,
+      from: `"Myntra Fashion" <${fromAddress}>`,
       to: cleanEmail,
       subject: `[Myntra] ${cleanOtp} is your verification OTP`,
       text: `Hello ${userName},\n\nYour Myntra verification OTP is: ${cleanOtp}\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.`,

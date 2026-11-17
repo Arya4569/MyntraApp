@@ -1,3 +1,5 @@
+# Render Blueprint Configuration v3.1 (Live Gmail SMTP & Razorpay Deployed)
+# Updated at: 2026-11-17T23:15:00Z
 services:
   # 1. Backend REST API Service
   - type: web
