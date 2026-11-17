@@ -16,6 +16,7 @@ interface OtpVerificationStepProps {
   onVerify: (otp: string) => Promise<void>;
   onResend: () => Promise<void>;
   onEditMobile: () => void;
+  onSwitchToPasswordLogin?: () => void;
   isLoading: boolean;
   errorMessage?: string;
   devOtp?: string;
@@ -27,6 +28,7 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
   onVerify,
   onResend,
   onEditMobile,
+  onSwitchToPasswordLogin,
   isLoading,
   errorMessage,
   cooldownSeconds = 30,
@@ -179,9 +181,14 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
 
       {/* Additional authentic Myntra login options */}
       <View style={styles.extraLinksContainer}>
-        <TouchableOpacity activeOpacity={0.7} style={styles.extraLinkRow}>
-          <Text style={styles.extraLinkText}>Log in using Password</Text>
-        </TouchableOpacity>
+        {onSwitchToPasswordLogin && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.extraLinkRow}
+            onPress={onSwitchToPasswordLogin}>
+            <Text style={styles.extraLinkText}>Log in using Password</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.helpRow}>
           <Text style={styles.helpText}>Have trouble logging in? </Text>
@@ -200,7 +207,9 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
             <Text style={styles.helpBoxTitle}>Need help with OTP?</Text>
           </View>
           <Text style={styles.helpBoxDesc}>
-            Check network coverage on your phone. If SMS is delayed, tap Resend OTP or contact customer care at support@myntra.com.
+            {isEmail
+              ? 'Please check your email Inbox and Spam/Junk folder. If OTP is delayed, tap Resend OTP.'
+              : 'Check network coverage on your phone. If SMS is delayed, tap Resend OTP.'}
           </Text>
         </View>
       )}

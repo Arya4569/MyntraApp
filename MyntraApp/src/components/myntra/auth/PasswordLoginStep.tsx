@@ -179,7 +179,7 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
           activeOpacity={0.7}
           disabled={isLoading}>
           <Ionicons name="phone-portrait-outline" size={16} color={MyntraColors.primary} />
-          <Text style={styles.otpSwitchText}>Log in with Mobile OTP</Text>
+          <Text style={styles.otpSwitchText}>Log in with OTP</Text>
         </TouchableOpacity>
 
         {/* Sign Up Link */}

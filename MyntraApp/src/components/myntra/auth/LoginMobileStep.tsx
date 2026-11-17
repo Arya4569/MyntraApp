@@ -76,13 +76,9 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
       <View style={styles.formContainer}>
         <View style={styles.headingRow}>
           {mode === 'signup' ? (
-            <Text style={styles.title}>Sign Up with OTP</Text>
+            <Text style={styles.title}>Create New Account</Text>
           ) : (
-            <>
-              <Text style={styles.title}>Login</Text>
-              <Text style={styles.orText}>or</Text>
-              <Text style={styles.title}>Signup</Text>
-            </>
+            <Text style={styles.title}>Log In with OTP</Text>
           )}
         </View>
 
@@ -185,7 +181,7 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Alternative Actions: Password Login & Direct Sign Up */}
+        {/* Alternative Actions: Password Login & Switch mode */}
         <View style={styles.altActionsContainer}>
           {onSwitchToPasswordLogin && (
             <TouchableOpacity
@@ -198,16 +194,30 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
             </TouchableOpacity>
           )}
 
-          {onSwitchToSignUp && (
-            <TouchableOpacity
-              onPress={onSwitchToSignUp}
-              style={styles.signUpBtn}
-              activeOpacity={0.7}
-              disabled={isLoading}>
-              <Text style={styles.signUpBtnText}>
-                New to Myntra? <Text style={styles.signUpHighlight}>Create Account</Text>
-              </Text>
-            </TouchableOpacity>
+          {mode === 'signup' ? (
+            onSwitchToPasswordLogin && (
+              <TouchableOpacity
+                onPress={onSwitchToPasswordLogin}
+                style={styles.signUpBtn}
+                activeOpacity={0.7}
+                disabled={isLoading}>
+                <Text style={styles.signUpBtnText}>
+                  Already have an account? <Text style={styles.signUpHighlight}>Log In</Text>
+                </Text>
+              </TouchableOpacity>
+            )
+          ) : (
+            onSwitchToSignUp && (
+              <TouchableOpacity
+                onPress={onSwitchToSignUp}
+                style={styles.signUpBtn}
+                activeOpacity={0.7}
+                disabled={isLoading}>
+                <Text style={styles.signUpBtnText}>
+                  New to Myntra? <Text style={styles.signUpHighlight}>Create Account</Text>
+                </Text>
+              </TouchableOpacity>
+            )
           )}
         </View>
       </View>

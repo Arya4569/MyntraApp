@@ -30,6 +30,7 @@ interface AuthModalProps {
 
 type AuthStep =
   | 'password_login'
+  | 'login_otp'
   | 'signup_otp'
   | 'otp'
   | 'register'
@@ -56,6 +57,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [step, setStep] = useState<AuthStep>(
     initialMode === 'signup' ? 'signup_otp' : 'password_login'
   );
+  const [otpSource, setOtpSource] = useState<'signup' | 'login'>('signup');
   const [mobile, setMobile] = useState('');
   const [devOtp, setDevOtp] = useState<string | undefined>(undefined);
   const [smsNotification, setSmsNotification] = useState<string | null>(null);
@@ -68,6 +70,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (!visible) return;
     const timer = setTimeout(() => {
       setStep(initialMode === 'signup' ? 'signup_otp' : 'password_login');
+      setOtpSource(initialMode === 'signup' ? 'signup' : 'login');
       setErrorMessage(undefined);
       clearAuthError();
     }, 0);
@@ -76,6 +79,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const resetState = () => {
     setStep(initialMode === 'signup' ? 'signup_otp' : 'password_login');
+    setOtpSource(initialMode === 'signup' ? 'signup' : 'login');
     setMobile('');
     setDevOtp(undefined);
     setSmsNotification(null);
@@ -89,10 +93,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onClose();
   };
 
-  // Step 1: Submit Mobile Number -> Send OTP
-  const handleContinueMobile = async (enteredMobile: string) => {
+  // Step 1: Submit Mobile / Email -> Send OTP
+  const handleContinueMobile = async (
+    enteredMobile: string,
+    source: 'signup' | 'login' = 'signup'
+  ) => {
     setIsLoading(true);
     setErrorMessage(undefined);
+    setOtpSource(source);
 
     try {
       const result = await sendOtp(enteredMobile);
@@ -127,7 +135,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       if (result.success) {
         setSmsNotification(null);
-        if (result.isNewUser) {
+        if (otpSource === 'signup' || result.isNewUser) {
           // New user needs to complete profile
           setStep('register');
         } else {
@@ -300,14 +308,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <View style={styles.sheetContainer}>
             {/* Top Navigation Bar */}
             <View style={styles.navBar}>
-              {step !== 'password_login' && step !== 'signup_otp' ? (
+              {step !== 'password_login' &&
+              step !== 'signup_otp' &&
+              step !== 'login_otp' ? (
                 <TouchableOpacity
                   onPress={() => {
                     setErrorMessage(undefined);
                     if (step === 'forgot_password') {
                       setStep('password_login');
                     } else if (step === 'otp') {
-                      setStep('signup_otp');
+                      setStep(otpSource === 'signup' ? 'signup_otp' : 'login_otp');
                     } else if (step === 'register') {
                       setStep('signup_otp');
                     } else {
@@ -332,12 +342,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               )}
 
               {/* Tabs Switcher for Login / Signup Root Views */}
-              {(step === 'password_login' || step === 'signup_otp') && (
+              {(step === 'password_login' ||
+                step === 'login_otp' ||
+                step === 'signup_otp') && (
                 <View style={styles.headerTabs}>
                   <TouchableOpacity
                     style={[
                       styles.headerTab,
-                      step === 'password_login' && styles.headerTabActive,
+                      (step === 'password_login' || step === 'login_otp') &&
+                        styles.headerTabActive,
                     ]}
                     onPress={() => {
                       setErrorMessage(undefined);
@@ -346,7 +359,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <Text
                       style={[
                         styles.headerTabText,
-                        step === 'password_login' && styles.headerTabTextActive,
+                        (step === 'password_login' || step === 'login_otp') &&
+                          styles.headerTabTextActive,
                       ]}>
                       LOG IN
                     </Text>
@@ -380,14 +394,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Simulated Phone SMS Push Notification Banner */}
+            {/* Simulated Phone SMS / Email Push Notification Banner */}
             {step === 'otp' && smsNotification && (
               <View style={styles.smsBanner}>
                 <View style={styles.smsHeader}>
-                  <View style={styles.smsIcon}>
-                    <Ionicons name="chatbubble" size={12} color="#ffffff" />
+                  <View
+                    style={[
+                      styles.smsIcon,
+                      mobile.includes('@') && { backgroundColor: '#3b82f6' },
+                    ]}>
+                    <Ionicons
+                      name={mobile.includes('@') ? 'mail' : 'chatbubble'}
+                      size={12}
+                      color="#ffffff"
+                    />
                   </View>
-                  <Text style={styles.smsAppTitle}>MESSAGES</Text>
+                  <Text style={styles.smsAppTitle}>
+                    {mobile.includes('@')
+                      ? 'DEMO EMAIL OTP (OFFLINE)'
+                      : 'MESSAGES'}
+                  </Text>
                   <Text style={styles.smsTime}>• now</Text>
                   <TouchableOpacity
                     onPress={() => setSmsNotification(null)}
@@ -397,11 +423,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.smsSender}>VK-MYNTRA</Text>
+                <Text style={styles.smsSender}>
+                  {mobile.includes('@')
+                    ? `Verification Code for ${mobile}`
+                    : 'VK-MYNTRA'}
+                </Text>
                 <Text style={styles.smsText}>
-                  <Text style={styles.smsOtpBold}>{smsNotification}</Text> is
-                  your OTP to login to Myntra. Valid for 5 mins. Do not share this
-                  OTP with anyone.
+                  Your code is{' '}
+                  <Text style={styles.smsOtpBold}>{smsNotification}</Text>. (Demo
+                  mode while backend is offline).
                 </Text>
 
                 <TouchableOpacity
@@ -431,7 +461,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                   onSwitchToOtp={() => {
                     setErrorMessage(undefined);
-                    setStep('signup_otp');
+                    setStep('login_otp');
                   }}
                   onForgotPassword={() => {
                     setErrorMessage(undefined);
@@ -442,10 +472,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               )}
 
+              {step === 'login_otp' && (
+                <LoginMobileStep
+                  mode="login"
+                  onContinue={(val) => handleContinueMobile(val, 'login')}
+                  isLoading={isLoading}
+                  errorMessage={currentError}
+                  isLiveProvider={isLiveProvider}
+                  onSwitchToPasswordLogin={() => {
+                    setErrorMessage(undefined);
+                    setStep('password_login');
+                  }}
+                  onSwitchToSignUp={() => {
+                    setErrorMessage(undefined);
+                    setStep('signup_otp');
+                  }}
+                />
+              )}
+
               {step === 'signup_otp' && (
                 <LoginMobileStep
                   mode="signup"
-                  onContinue={handleContinueMobile}
+                  onContinue={(val) => handleContinueMobile(val, 'signup')}
                   isLoading={isLoading}
                   errorMessage={currentError}
                   isLiveProvider={isLiveProvider}
@@ -474,7 +522,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   mobile={mobile}
                   onVerify={handleVerifyOtp}
                   onResend={handleResendOtp}
-                  onEditMobile={() => setStep('signup_otp')}
+                  onEditMobile={() =>
+                    setStep(otpSource === 'signup' ? 'signup_otp' : 'login_otp')
+                  }
+                  onSwitchToPasswordLogin={() => {
+                    setErrorMessage(undefined);
+                    setStep('password_login');
+                  }}
                   isLoading={isLoading}
                   errorMessage={currentError}
                   devOtp={devOtp}
