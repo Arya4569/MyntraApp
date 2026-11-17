@@ -29,7 +29,6 @@ services:
     name: myntra-app-web
     runtime: static
     rootDir: MyntraApp
-    plan: free
     buildCommand: npm install && npx expo export -p web
     staticPublishPath: dist
     routes:
