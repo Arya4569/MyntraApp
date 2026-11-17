@@ -6,8 +6,9 @@ let transporter = null;
  * Returns a configured nodemailer transporter for sending real emails
  */
 const getTransporter = () => {
-  const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASS;
+  const emailUser = (process.env.EMAIL_USER || 'aryakarande45@gmail.com').trim();
+  const rawPass = (process.env.EMAIL_PASS || 'tjbpfmtmralpzwsz').trim();
+  const emailPass = rawPass.replace(/\s+/g, '');
 
   if (
     !emailUser ||
@@ -23,7 +24,7 @@ const getTransporter = () => {
       service: process.env.EMAIL_SERVICE || 'gmail',
       auth: {
         user: emailUser,
-        pass: emailPass.replace(/\s+/g, ''), // Strip spaces in Google 16-char app password
+        pass: emailPass,
       },
     });
   }

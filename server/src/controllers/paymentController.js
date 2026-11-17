@@ -7,8 +7,8 @@ const db = require('../db');
 
 const Order = require('../models/Order');
 
-const getKeyId = () => process.env.RAZORPAY_KEY_ID || '';
-const getKeySecret = () => process.env.RAZORPAY_KEY_SECRET || '';
+const getKeyId = () => (process.env.RAZORPAY_KEY_ID || 'rzp_test_U0RY5Y1pcPho06').trim();
+const getKeySecret = () => (process.env.RAZORPAY_KEY_SECRET || 'paxc1ynKdjucDgJujNz7GLB9').trim();
 
 const getRazorpayInstance = () => {
   const keyId = getKeyId();
