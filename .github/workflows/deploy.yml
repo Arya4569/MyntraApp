@@ -39,6 +39,7 @@ jobs:
       - name: Build Web App for GitHub Pages
         env:
           EXPO_BASE_URL: /MyntraApp
+          EXPO_PUBLIC_API_URL: https://shapes-fan-instrument-marks.trycloudflare.com/api
         run: |
           cd MyntraApp
           npx expo export -p web

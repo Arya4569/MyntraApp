@@ -5112,10 +5112,11 @@
   "recentlyViewed": {
     "usr-demo-1": [],
     "usr_1792217194037_1t0tw8": [
+      "prod-1",
+      "prod-26",
       "prod-5",
       "prod-3",
       "prod-2",
-      "prod-1",
       "prod-21",
       "prod-18"
     ],
@@ -13892,14 +13893,14 @@
     {
       "id": "tok_1792407302459_sax3w",
       "userId": "usr_1792217194037_1t0tw8",
-      "token": "ExponentPushToken[web_1794832624890_client]",
+      "token": "ExponentPushToken[web_1794905857711_client]",
       "platform": "web",
       "deviceId": "web_dev",
       "deviceName": "Myntra Device",
-      "active": true,
+      "active": false,
       "createdAt": "2026-10-19T10:55:02.459Z",
-      "updatedAt": "2026-11-16T12:45:01.837Z",
-      "deactivatedReason": "DeviceNotRegistered"
+      "updatedAt": "2026-11-17T08:57:48.713Z",
+      "deactivatedReason": "Logout"
     },
     {
       "id": "tok_1792409443985_f0g13",
@@ -14186,7 +14187,7 @@
       "promotions": true,
       "cartReminders": true,
       "userId": "usr_1792217194037_1t0tw8",
-      "updatedAt": "2026-11-16T12:45:01.917Z",
+      "updatedAt": "2026-11-17T08:57:37.819Z",
       "pushNotificationsEnabled": true,
       "devicePushEnabled": true
     },

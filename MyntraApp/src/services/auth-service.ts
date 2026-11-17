@@ -45,7 +45,23 @@ interface ActiveOtp {
 
 const activeOtps = new Map<string, ActiveOtp>();
 
+const LIVE_BACKEND_URL = 'https://shapes-fan-instrument-marks.trycloudflare.com/api';
+
 const getApiBaseUrl = (): string => {
+  // If in browser on production/hosted domain (e.g. github.io), route to live HTTPS backend
+  if (
+    Platform.OS === 'web' &&
+    typeof window !== 'undefined' &&
+    window.location &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    if (process.env.EXPO_PUBLIC_API_URL && !process.env.EXPO_PUBLIC_API_URL.includes('localhost')) {
+      return process.env.EXPO_PUBLIC_API_URL;
+    }
+    return LIVE_BACKEND_URL;
+  }
+
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
