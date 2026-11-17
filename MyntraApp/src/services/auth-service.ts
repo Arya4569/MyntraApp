@@ -48,7 +48,12 @@ const activeOtps = new Map<string, ActiveOtp>();
 const LIVE_BACKEND_URL = 'https://shapes-fan-instrument-marks.trycloudflare.com/api';
 
 const getApiBaseUrl = (): string => {
-  // If in browser on production/hosted domain (e.g. github.io), route to live HTTPS backend
+  // 1. If explicit production API URL is baked, use it
+  if (process.env.EXPO_PUBLIC_API_URL && !process.env.EXPO_PUBLIC_API_URL.includes('localhost')) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+
+  // 2. If running on web in hosted domain (e.g. github.io), route to live HTTPS backend
   if (
     Platform.OS === 'web' &&
     typeof window !== 'undefined' &&
@@ -56,27 +61,22 @@ const getApiBaseUrl = (): string => {
     window.location.hostname !== 'localhost' &&
     window.location.hostname !== '127.0.0.1'
   ) {
-    if (process.env.EXPO_PUBLIC_API_URL && !process.env.EXPO_PUBLIC_API_URL.includes('localhost')) {
-      return process.env.EXPO_PUBLIC_API_URL;
-    }
     return LIVE_BACKEND_URL;
   }
 
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
+  // 3. If running on native mobile (APK / standalone phone)
   if (Platform.OS !== 'web') {
     const hostUri = Constants.expoConfig?.hostUri;
     if (hostUri) {
       const host = hostUri.split(':')[0];
-      if (host) {
+      if (host && host !== 'localhost' && host !== '127.0.0.1') {
         return `http://${host}:5000/api`;
       }
     }
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:5000/api';
-    }
+    // Real Android phone or Standalone APK -> use live HTTPS cloud backend
+    return LIVE_BACKEND_URL;
   }
+
   return 'http://localhost:5000/api';
 };
 

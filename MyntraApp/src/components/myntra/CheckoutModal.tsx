@@ -628,7 +628,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       {orderError && (
         <View style={styles.errorBanner}>
           <Ionicons name="alert-circle" size={18} color="#b91c1c" />
-          <Text style={styles.errorBannerText}>{orderError}</Text>
+          <View style={{ flex: 1, marginHorizontal: 8 }}>
+            <Text style={styles.errorBannerText}>{orderError}</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setPaymentMethod('cod');
+                setOrderError(null);
+                setTimeout(() => {
+                  handleConfirmOrder();
+                }, 100);
+              }}
+              style={{
+                marginTop: 6,
+                backgroundColor: '#b91c1c',
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 4,
+                alignSelf: 'flex-start',
+              }}
+              activeOpacity={0.85}>
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>
+                👉 Pay with Cash on Delivery (COD) Instead
+              </Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity onPress={() => setOrderError(null)} activeOpacity={0.7}>
             <Ionicons name="close" size={16} color="#b91c1c" />
           </TouchableOpacity>
