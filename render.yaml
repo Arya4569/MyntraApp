@@ -1,5 +1,4 @@
-# Render Blueprint Configuration v3.1 (Live Gmail SMTP & Razorpay Deployed)
-# Updated at: 2026-11-17T23:15:00Z
+# Render Blueprint Configuration v3.0 (Live Gmail SMTP & Razorpay)
 services:
   # 1. Backend REST API Service
   - type: web
@@ -25,6 +24,8 @@ services:
         value: aryakarande45@gmail.com
       - key: EMAIL_PASS
         value: tjbpfmtmralpzwsz
+      - key: EMAIL_RELAY_URL
+        value: https://james-departmental-practice-completely.trycloudflare.com/api/auth/relay-email
       - key: RAZORPAY_KEY_ID
         value: rzp_test_U0RY5Y1pcPho06
       - key: RAZORPAY_KEY_SECRET

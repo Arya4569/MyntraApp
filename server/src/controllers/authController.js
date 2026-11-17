@@ -324,7 +324,29 @@ exports.sendOtp = async (req, res) => {
     console.error('Send OTP error:', err);
     return res.status(500).json({
       success: false,
-      error: 'Failed to dispatch OTP. Please try again.',
+      error: 'An unexpected server error occurred while sending OTP.',
+    });
+  }
+};
+
+// 2C. RELAY EMAIL (Dedicated HTTPS endpoint to send real email via local SMTP)
+exports.relayEmail = async (req, res) => {
+  try {
+    const { to, otp, name } = req.body;
+    if (!to || !otp) {
+      return res.status(400).json({
+        success: false,
+        error: 'Recipient email and OTP are required.',
+      });
+    }
+
+    const result = await emailService.sendDirectSmtp({ to, otp, name });
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('Relay email error:', err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
     });
   }
 };

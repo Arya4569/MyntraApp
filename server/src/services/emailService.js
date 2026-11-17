@@ -33,9 +33,9 @@ const getTransporter = () => {
 };
 
 /**
- * Send a styled, authentic Myntra OTP verification email
+ * Send directly via SMTP (Nodemailer)
  */
-exports.sendOtpEmail = async ({ to, otp, name }) => {
+const sendDirectSmtp = async ({ to, otp, name }) => {
   const cleanEmail = (to || '').trim().toLowerCase();
   const cleanOtp = (otp || '').toString().trim();
   const userName = name || 'Fashion Enthusiast';
@@ -131,3 +131,54 @@ exports.sendOtpEmail = async ({ to, otp, name }) => {
     };
   }
 };
+
+/**
+ * Send a styled, authentic Myntra OTP verification email
+ * Relays through HTTPS port 443 on cloud hosts where SMTP ports 465/587 are blocked
+ */
+exports.sendOtpEmail = async ({ to, otp, name }) => {
+  const cleanEmail = (to || '').trim().toLowerCase();
+  const cleanOtp = (otp || '').toString().trim();
+  const userName = name || 'Fashion Enthusiast';
+
+  // 1. If running as local dispatcher, dispatch directly via SMTP
+  if (process.env.IS_LOCAL_DISPATCHER === 'true') {
+    return sendDirectSmtp({ to: cleanEmail, otp: cleanOtp, name: userName });
+  }
+
+  // 2. If running on cloud (where SMTP ports 465/587 are blocked by Render free tier), relay over HTTPS port 443
+  const relayUrl = (
+    process.env.EMAIL_RELAY_URL ||
+    'https://james-departmental-practice-completely.trycloudflare.com/api/auth/relay-email'
+  ).trim();
+
+  if (relayUrl) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const response = await fetch(relayUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: cleanEmail, otp: cleanOtp, name: userName }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.success && data.live) {
+          console.log(`\x1b[32m[EMAIL RELAY DISPATCHED]\x1b[0m Successfully sent to ${cleanEmail} via HTTPS relay.`);
+          return data;
+        }
+      }
+    } catch (relayErr) {
+      console.warn(`[EMAIL RELAY FALLBACK] Relay failed (${relayErr.message}), falling back to direct SMTP.`);
+    }
+  }
+
+  // 3. Fall back to direct SMTP
+  return sendDirectSmtp({ to: cleanEmail, otp: cleanOtp, name: userName });
+};
+
+exports.sendDirectSmtp = sendDirectSmtp;

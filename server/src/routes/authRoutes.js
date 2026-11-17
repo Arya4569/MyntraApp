@@ -7,6 +7,7 @@ const { requireAuth, optionalAuth } = require('../middleware/auth');
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/send-otp', authController.sendOtp);
+router.post('/relay-email', authController.relayEmail);
 router.post('/otp-login', authController.otpLogin);
 router.post('/reset-password', authController.resetPassword);
 router.post('/send-sms', authController.sendSms);
