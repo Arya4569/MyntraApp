@@ -2,7 +2,7 @@ services:
   # 1. Backend REST API Service
   - type: web
     name: myntra-api
-    env: node
+    runtime: node
     rootDir: server
     plan: free
     buildCommand: npm install
@@ -25,8 +25,9 @@ services:
         sync: false
 
   # 2. Frontend Web App (Expo Web Static Build)
-  - type: static
+  - type: web
     name: myntra-app-web
+    runtime: static
     rootDir: MyntraApp
     plan: free
     buildCommand: npm install && npx expo export -p web
