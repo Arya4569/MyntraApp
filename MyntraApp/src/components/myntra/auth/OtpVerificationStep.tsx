@@ -111,9 +111,7 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
 
         {isEmail && (
           <Text style={styles.inboxHintText}>
-            {devOtp
-              ? '⚡ Tap the auto-fill banner above or enter 1234 to verify'
-              : '📩 Check your inbox & spam folder for the code'}
+            📩 Check your inbox & spam folder for the 4-digit code
           </Text>
         )}
       </View>

@@ -622,10 +622,9 @@ class AuthService {
       };
     }
 
-    // Strict validation with '1234' universal test bypass
+    // Strict validation against real dispatched OTP
     const isCodeMatch =
       record.code === cleanOtp ||
-      cleanOtp === '1234' ||
       (cleanOtp.length === 4 && cleanOtp === record.code);
 
     if (!isCodeMatch) {

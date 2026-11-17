@@ -381,58 +381,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Simulated Phone SMS / Email Push Notification Banner */}
-            {step === 'otp' && smsNotification && (
-              <View style={styles.smsBanner}>
-                <View style={styles.smsHeader}>
-                  <View
-                    style={[
-                      styles.smsIcon,
-                      mobile.includes('@') && { backgroundColor: '#3b82f6' },
-                    ]}>
-                    <Ionicons
-                      name={mobile.includes('@') ? 'mail' : 'chatbubble'}
-                      size={12}
-                      color="#ffffff"
-                    />
-                  </View>
-                  <Text style={styles.smsAppTitle}>
-                    {mobile.includes('@')
-                      ? 'EMAIL VERIFICATION CODE'
-                      : 'MESSAGES'}
-                  </Text>
-                  <Text style={styles.smsTime}>• now</Text>
-                  <TouchableOpacity
-                    onPress={() => setSmsNotification(null)}
-                    style={styles.smsCloseBtn}
-                    activeOpacity={0.7}>
-                    <Ionicons name="close" size={14} color="#9ca3af" />
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.smsSender}>
-                  {mobile.includes('@')
-                    ? `Verification Code for ${mobile}`
-                    : 'VK-MYNTRA'}
-                </Text>
-                <Text style={styles.smsText}>
-                  Your verification code is{' '}
-                  <Text style={styles.smsOtpBold}>{smsNotification}</Text>. (Demo
-                  mode — tap below to auto-fill).
-                </Text>
-
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.smsAutoFill}
-                  onPress={() => handleVerifyOtp(smsNotification)}>
-                  <Ionicons name="flash" size={12} color="#38bdf8" />
-                  <Text style={styles.smsAutoFillText}>
-                    Tap to auto-fill OTP ({smsNotification})
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
             {/* Scrollable Form Body */}
             <ScrollView
               style={styles.scrollContainer}
