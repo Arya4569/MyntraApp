@@ -20,9 +20,13 @@ services:
       - key: EMAIL_SERVICE
         value: gmail
       - key: EMAIL_USER
-        sync: false
+        value: aryakarande45@gmail.com
       - key: EMAIL_PASS
-        sync: false
+        value: tjbpfmtmralpzwsz
+      - key: RAZORPAY_KEY_ID
+        value: rzp_test_U0RY5Y1pcPho06
+      - key: RAZORPAY_KEY_SECRET
+        value: paxc1ynKdjucDgJujNz7GLB9
 
   # 2. Frontend Web App (Expo Web Static Build)
   - type: web
