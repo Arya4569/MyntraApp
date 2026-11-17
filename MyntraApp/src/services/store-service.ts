@@ -2783,6 +2783,7 @@ class StoreService {
   async createRazorpayOrder(amount: number, receipt?: string, internalOrderId?: string): Promise<{
     success: boolean;
     orderId: string;
+    isServerOrder?: boolean;
     internalOrderId?: string;
     amount: number;
     currency: string;
@@ -2802,17 +2803,23 @@ class StoreService {
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          return data;
+          return {
+            ...data,
+            isServerOrder: Boolean(data.orderId && !data.sandbox && !data.orderId.startsWith('order_sandbox_')),
+          };
         }
       }
     } catch (err: any) {
       console.warn('Backend payment create-order unavailable, using client fallback:', err);
     }
 
-    // Seamless client fallback with active Razorpay test key so checkout never fails with "failed to fetch"
+    // Seamless client fallback with active Razorpay test key so checkout never fails
+    // CRITICAL: orderId is intentionally left empty so Razorpay checkout.js operates in direct standard mode.
+    // Never pass a fake/synthetic orderId to Razorpay API or it will reject with 400 Bad Request!
     return {
       success: true,
-      orderId: `order_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`,
+      orderId: '',
+      isServerOrder: false,
       internalOrderId,
       amount: Math.round(amount * 100),
       currency: 'INR',
