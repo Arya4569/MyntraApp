@@ -41,4 +41,4 @@ services:
         destination: /index.html
     envVars:
       - key: EXPO_PUBLIC_API_URL
-        value: https://myntra-api.onrender.com/api
+        value: https://myntra-api-oytt.onrender.com/api

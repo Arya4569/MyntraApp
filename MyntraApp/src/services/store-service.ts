@@ -69,7 +69,7 @@ const STORE_KEYS = {
   NOTIFICATION_PREFS_USER_PREFIX: '@myntra_notification_prefs_user_',
 };
 
-const LIVE_BACKEND_URL = 'https://shapes-fan-instrument-marks.trycloudflare.com/api';
+const LIVE_BACKEND_URL = 'https://myntra-api-oytt.onrender.com/api';
 
 const getApiBaseUrl = (): string => {
   // 1. If explicit production API URL is baked, use it

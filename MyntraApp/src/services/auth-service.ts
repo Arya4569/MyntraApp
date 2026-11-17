@@ -45,7 +45,7 @@ interface ActiveOtp {
 
 const activeOtps = new Map<string, ActiveOtp>();
 
-const LIVE_BACKEND_URL = 'https://shapes-fan-instrument-marks.trycloudflare.com/api';
+const LIVE_BACKEND_URL = 'https://myntra-api-oytt.onrender.com/api';
 
 const getApiBaseUrl = (): string => {
   // 1. If explicit production API URL is baked, use it
