@@ -118,6 +118,19 @@ if (require.main === module) {
     console.log(`🔔 Notifs:     http://localhost:${PORT}/api/notifications`);
     console.log(`📦 Orders:      http://localhost:${PORT}/api/orders`);
     console.log(`===============================================`);
+
+    // Render Free Tier Keep-Alive: Ping itself periodically to keep container warm
+    if (process.env.NODE_ENV === 'production') {
+      const https = require('https');
+      const pingUrl = 'https://myntra-api-oytt.onrender.com/api/health';
+      setInterval(() => {
+        https.get(pingUrl, (res) => {
+          console.log(`[KEEP-ALIVE] Pinged self (Status: ${res.statusCode})`);
+        }).on('error', (err) => {
+          console.warn('[KEEP-ALIVE] Ping notice:', err.message);
+        });
+      }, 10 * 60 * 1000);
+    }
   });
 }
 

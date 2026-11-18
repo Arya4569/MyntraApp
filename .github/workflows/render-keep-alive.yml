@@ -1,0 +1,23 @@
+name: Render 24/7 Keep Alive (Zero Cold Start)
+
+on:
+  schedule:
+    # Run every 10 minutes around the clock
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Backend Health Endpoint
+        run: |
+          echo "Pinging Render Backend..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://myntra-api-oytt.onrender.com/api/health)
+          echo "Backend Health HTTP Status: $HTTP_STATUS"
+
+      - name: Ping Render Frontend Web App
+        run: |
+          echo "Pinging Render Frontend..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://myntra-app-web.onrender.com)
+          echo "Frontend Web HTTP Status: $HTTP_STATUS"
