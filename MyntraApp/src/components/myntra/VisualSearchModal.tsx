@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
+  Alert,
   Image,
   Modal,
   Platform,
@@ -112,7 +114,7 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
     }, 1200);
   };
 
-  const handlePickImage = () => {
+  const handlePickImageWeb = () => {
     if (typeof document !== 'undefined') {
       const input = document.createElement('input');
       input.type = 'file';
@@ -131,6 +133,108 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
         reader.readAsDataURL(file);
       };
       input.click();
+    }
+  };
+
+  const handleLaunchCamera = async () => {
+    if (Platform.OS === 'web') {
+      handlePickImageWeb();
+      return;
+    }
+
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please allow Myntra to access your camera to scan outfit photos for visual search.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        processUploadedImage(asset.fileName || 'camera_outfit.jpg', asset.uri);
+      }
+    } catch (err: any) {
+      console.warn('Native camera launch failed:', err?.message);
+      handleNativeCameraFallback('camera');
+    }
+  };
+
+  const handlePickGallery = async () => {
+    if (Platform.OS === 'web') {
+      handlePickImageWeb();
+      return;
+    }
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Gallery Permission Required',
+          'Please allow Myntra to access your photos to select an outfit for visual search.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        processUploadedImage(asset.fileName || 'gallery_outfit.jpg', asset.uri);
+      }
+    } catch (err: any) {
+      console.warn('Native gallery launch failed:', err?.message);
+      handleNativeCameraFallback('gallery');
+    }
+  };
+
+  const handleNativeCameraFallback = (mode: 'camera' | 'gallery') => {
+    Alert.alert(
+      mode === 'camera' ? 'Visual Search Outfit Scanner' : 'Select Outfit Photo',
+      'Choose a sample fashion look to test visual search, or take a snapshot:',
+      [
+        {
+          text: 'Vintage Denim Jacket',
+          onPress: () => handleSimulateScan(PRESET_STYLES[0]),
+        },
+        {
+          text: 'Summer Floral Dress',
+          onPress: () => handleSimulateScan(PRESET_STYLES[1]),
+        },
+        {
+          text: 'Court Minimalist Sneakers',
+          onPress: () => handleSimulateScan(PRESET_STYLES[2]),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handlePickImage = () => {
+    if (Platform.OS === 'web') {
+      handlePickImageWeb();
+    } else {
+      Alert.alert('Scan or Upload Outfit', 'Choose how you want to add an outfit photo:', [
+        { text: '📷 Take Photo', onPress: handleLaunchCamera },
+        { text: '🖼️ Choose from Gallery', onPress: handlePickGallery },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
     }
   };
 
@@ -309,13 +413,22 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
               <Text style={styles.cameraHelpText}>
                 Upload any outfit photo or use camera to find matching styles
               </Text>
-              <TouchableOpacity
-                style={styles.uploadPromptBtn}
-                onPress={handlePickImage}
-                activeOpacity={0.85}>
-                <Ionicons name="cloud-upload" size={18} color="#fff" />
-                <Text style={styles.uploadPromptText}>UPLOAD OUTFIT PHOTO</Text>
-              </TouchableOpacity>
+              <View style={styles.uploadPromptRow}>
+                <TouchableOpacity
+                  style={styles.uploadPromptBtn}
+                  onPress={handleLaunchCamera}
+                  activeOpacity={0.85}>
+                  <Ionicons name="camera" size={18} color="#fff" />
+                  <Text style={styles.uploadPromptText}>TAKE PHOTO</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.uploadPromptBtn, styles.uploadPromptSecondaryBtn]}
+                  onPress={handlePickGallery}
+                  activeOpacity={0.85}>
+                  <Ionicons name="images" size={18} color="#fff" />
+                  <Text style={styles.uploadPromptText}>GALLERY</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -367,15 +480,17 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
             {/* Shutter / Scan Button */}
             <TouchableOpacity
               style={styles.shutterBtn}
-              onPress={handlePickImage}
-              activeOpacity={0.85}>
+              onPress={handleLaunchCamera}
+              activeOpacity={0.85}
+              accessibilityLabel="Take photo with camera">
               <View style={styles.shutterInner} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.controlSmallBtn}
-              onPress={handlePickImage}
-              activeOpacity={0.8}>
+              onPress={handlePickGallery}
+              activeOpacity={0.8}
+              accessibilityLabel="Choose from gallery">
               <Ionicons name="images-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -519,20 +634,29 @@ const styles = StyleSheet.create({
     marginTop: 16,
     lineHeight: 18,
   },
+  uploadPromptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 18,
+  },
   uploadPromptBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: '#ff3f6c',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 24,
-    marginTop: 18,
     shadowColor: '#ff3f6c',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 4,
+  },
+  uploadPromptSecondaryBtn: {
+    backgroundColor: '#333333',
+    shadowColor: '#000000',
   },
   uploadPromptText: {
     color: '#ffffff',
