@@ -30,18 +30,22 @@ services:
         value: rzp_test_U0RY5Y1pcPho06
       - key: RAZORPAY_KEY_SECRET
         value: paxc1ynKdjucDgJujNz7GLB9
+      - key: NODE_VERSION
+        value: 20.18.0
 
   # 2. Frontend Web App (Expo Web Static Build)
   - type: web
     name: myntra-app-web
     runtime: static
     rootDir: MyntraApp
-    buildCommand: npm install && npx expo export -p web
+    buildCommand: npm install --legacy-peer-deps && npx expo export -p web
     staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
       - key: EXPO_PUBLIC_API_URL
         value: https://myntra-api-oytt.onrender.com/api
