@@ -149,7 +149,7 @@ exports.sendOtpEmail = async ({ to, otp, name }) => {
   // 2. If running on cloud (where SMTP ports 465/587 are blocked by Render free tier), relay over HTTPS port 443
   const relayUrl = (
     process.env.EMAIL_RELAY_URL ||
-    'https://james-departmental-practice-completely.trycloudflare.com/api/auth/relay-email'
+    'https://marcus-what-valentine-learners.trycloudflare.com/api/auth/relay-email'
   ).trim();
 
   if (relayUrl) {

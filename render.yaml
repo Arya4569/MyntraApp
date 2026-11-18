@@ -25,7 +25,7 @@ services:
       - key: EMAIL_PASS
         value: tjbpfmtmralpzwsz
       - key: EMAIL_RELAY_URL
-        value: https://james-departmental-practice-completely.trycloudflare.com/api/auth/relay-email
+        value: https://marcus-what-valentine-learners.trycloudflare.com/api/auth/relay-email
       - key: RAZORPAY_KEY_ID
         value: rzp_test_U0RY5Y1pcPho06
       - key: RAZORPAY_KEY_SECRET
