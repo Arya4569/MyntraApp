@@ -90,14 +90,16 @@ const getApiBaseUrl = (): string => {
 
   // 3. If running on native mobile (APK / standalone phone)
   if (Platform.OS !== 'web') {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const host = hostUri.split(':')[0];
-      if (host && host !== 'localhost' && host !== '127.0.0.1') {
-        return `http://${host}:5000/api`;
+    if (__DEV__) {
+      const hostUri = Constants.expoConfig?.hostUri;
+      if (hostUri) {
+        const host = hostUri.split(':')[0];
+        if (host && host !== 'localhost' && host !== '127.0.0.1') {
+          return `http://${host}:5000/api`;
+        }
       }
     }
-    // Real Android phone or Standalone APK -> use live HTTPS cloud backend
+    // Real Android phone or Standalone APK -> ALWAYS use live HTTPS cloud backend
     return LIVE_BACKEND_URL;
   }
 

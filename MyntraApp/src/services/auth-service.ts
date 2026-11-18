@@ -66,14 +66,16 @@ const getApiBaseUrl = (): string => {
 
   // 3. If running on native mobile (APK / standalone phone)
   if (Platform.OS !== 'web') {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const host = hostUri.split(':')[0];
-      if (host && host !== 'localhost' && host !== '127.0.0.1') {
-        return `http://${host}:5000/api`;
+    if (__DEV__) {
+      const hostUri = Constants.expoConfig?.hostUri;
+      if (hostUri) {
+        const host = hostUri.split(':')[0];
+        if (host && host !== 'localhost' && host !== '127.0.0.1') {
+          return `http://${host}:5000/api`;
+        }
       }
     }
-    // Real Android phone or Standalone APK -> use live HTTPS cloud backend
+    // Real Android phone or Standalone APK -> ALWAYS use live HTTPS cloud backend
     return LIVE_BACKEND_URL;
   }
 
@@ -458,13 +460,18 @@ class AuthService {
       };
     }
 
-    // Call backend real-time send-otp endpoint
+    // Call backend real-time send-otp endpoint with a 5s fast timeout
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(`${getApiBaseUrl()}/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: cleanKey }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -560,13 +567,18 @@ class AuthService {
     const cleanKey = isEmail ? raw.toLowerCase() : raw.replace(/\D/g, '');
     const cleanOtp = (enteredOtp || '').trim();
 
-    // Call backend OTP login endpoint to get real JWT token and isolated user profile
+    // Call backend OTP login endpoint with a 5s fast timeout
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(`${getApiBaseUrl()}/auth/otp-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: cleanKey, otp: cleanOtp }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
