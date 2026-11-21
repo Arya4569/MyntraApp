@@ -29,7 +29,7 @@ services:
       - key: RAZORPAY_KEY_SECRET
         value: paxc1ynKdjucDgJujNz7GLB9
       - key: NODE_VERSION
-        value: 20.18.0
+        value: 22.11.0
 
   # 2. Frontend Web App (Expo Web Static Build)
   - type: web
@@ -44,6 +44,6 @@ services:
         destination: /index.html
     envVars:
       - key: NODE_VERSION
-        value: 20.18.0
+        value: 22.11.0
       - key: EXPO_PUBLIC_API_URL
         value: https://myntra-api-oytt.onrender.com/api

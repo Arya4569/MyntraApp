@@ -1,9 +1,16 @@
 /**
  * Transactional SQLite Persistence Layer for Cart & Transaction-Critical Operations
- * Powered by Node.js 25 built-in node:sqlite with ACID compliance, WAL mode,
+ * Powered by Node.js 22/25 built-in node:sqlite with ACID compliance, WAL mode,
  * immediate write locks, rollback support, and automatic JSON migration.
+ * Includes resilient JSON fallback for Node environments < 22.
  */
-const { DatabaseSync } = require('node:sqlite');
+let DatabaseSync = null;
+try {
+  DatabaseSync = require('node:sqlite').DatabaseSync;
+} catch (e) {
+  DatabaseSync = null;
+}
+
 const path = require('path');
 const fs = require('fs');
 
@@ -17,12 +24,24 @@ class SqliteManager {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
 
-    this.db = new DatabaseSync(SQLITE_FILE);
-    this.init();
-    this.migrateFromJson();
+    if (DatabaseSync) {
+      try {
+        this.db = new DatabaseSync(SQLITE_FILE);
+        this.init();
+        this.migrateFromJson();
+        this.isSqliteActive = true;
+      } catch (e) {
+        console.warn('[SQLite] Notice initializing SQLite:', e.message);
+        this.isSqliteActive = false;
+      }
+    } else {
+      console.warn('[SQLite] node:sqlite not available on this Node version. Operating in resilient JSON sync mode.');
+      this.isSqliteActive = false;
+    }
   }
 
   init() {
+    if (!this.db) return;
     // 1. Enable WAL mode for high concurrency
     this.db.exec('PRAGMA journal_mode = WAL;');
     this.db.exec('PRAGMA busy_timeout = 5000;');
@@ -68,17 +87,12 @@ class SqliteManager {
     `);
   }
 
-  /**
-   * Migrate existing cart and saved items from data/db.json into SQLite
-   * Preserves all legacy user data.
-   */
   migrateFromJson() {
-    const migrated = this.db.prepare('SELECT key FROM _migration_meta WHERE key = ?').get('json_cart_migrated');
-    if (migrated) {
-      return; // Already migrated
-    }
-
+    if (!this.db) return;
     try {
+      const migrated = this.db.prepare('SELECT key FROM _migration_meta WHERE key = ?').get('json_cart_migrated');
+      if (migrated) return;
+
       if (fs.existsSync(JSON_DB_FILE)) {
         const raw = fs.readFileSync(JSON_DB_FILE, 'utf8');
         const data = JSON.parse(raw);
@@ -145,22 +159,36 @@ class SqliteManager {
     }
   }
 
-  /**
-   * Execute an atomic database transaction with BEGIN IMMEDIATE and automatic rollback
-   */
-  transaction(fn) {
-    this.db.exec('BEGIN IMMEDIATE;');
+  readJson() {
     try {
-      const result = fn(this.db);
-      this.db.exec('COMMIT;');
-      return result;
-    } catch (err) {
-      try {
-        this.db.exec('ROLLBACK;');
-      } catch (rbErr) {
-        // Rollback attempt
+      if (fs.existsSync(JSON_DB_FILE)) {
+        return JSON.parse(fs.readFileSync(JSON_DB_FILE, 'utf8'));
       }
-      throw err;
+    } catch (e) {}
+    return { bags: {}, savedForLater: {} };
+  }
+
+  writeJson(data) {
+    try {
+      fs.writeFileSync(JSON_DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+    } catch (e) {}
+  }
+
+  transaction(fn) {
+    if (this.isSqliteActive && this.db) {
+      this.db.exec('BEGIN IMMEDIATE;');
+      try {
+        const result = fn(this.db);
+        this.db.exec('COMMIT;');
+        return result;
+      } catch (err) {
+        try {
+          this.db.exec('ROLLBACK;');
+        } catch (rbErr) {}
+        throw err;
+      }
+    } else {
+      return fn(null);
     }
   }
 
@@ -168,6 +196,20 @@ class SqliteManager {
 
   getCartItems(userId) {
     if (!userId) return [];
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      const items = data.bags?.[userId] || [];
+      return items.map((r) => ({
+        id: r.id,
+        productId: r.productId,
+        size: r.size,
+        color: r.color,
+        quantity: Number(r.quantity),
+        savedPrice: r.savedPrice !== null && r.savedPrice !== undefined ? Number(r.savedPrice) : undefined,
+        addedAt: r.addedAt || r.createdAt,
+      }));
+    }
+
     const rows = this.db.prepare(`
       SELECT id, product_id AS productId, size, color, quantity, saved_price AS savedPrice, created_at AS addedAt
       FROM cart_items
@@ -188,6 +230,20 @@ class SqliteManager {
 
   getSavedItems(userId) {
     if (!userId) return [];
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      const items = data.savedForLater?.[userId] || [];
+      return items.map((r) => ({
+        id: r.id,
+        productId: r.productId,
+        size: r.size,
+        color: r.color,
+        quantity: Number(r.quantity),
+        savedPrice: r.savedPrice !== null && r.savedPrice !== undefined ? Number(r.savedPrice) : undefined,
+        savedAt: r.savedAt,
+      }));
+    }
+
     const rows = this.db.prepare(`
       SELECT id, product_id AS productId, size, color, quantity, saved_price AS savedPrice, saved_at AS savedAt
       FROM saved_for_later
@@ -207,6 +263,40 @@ class SqliteManager {
   }
 
   addItem(userId, { productId, size, color, quantity = 1, price = null, availableStock = 10 }) {
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      if (!data.bags) data.bags = {};
+      if (!data.bags[userId]) data.bags[userId] = [];
+      const existing = data.bags[userId].find((i) => i.productId === productId && i.size === size);
+      if (existing) {
+        const newQty = Number(existing.quantity) + Number(quantity);
+        if (newQty > availableStock) {
+          throw new Error(`Cannot add more. You already have ${existing.quantity} in your bag and only ${availableStock} are available in stock.`);
+        }
+        if (newQty > 10) throw new Error('Maximum purchase limit is 10 units per item.');
+        existing.quantity = newQty;
+        this.writeJson(data);
+        return { id: existing.id, isUpdated: true, quantity: newQty };
+      }
+      if (quantity > availableStock) {
+        throw new Error(`Only ${availableStock} unit(s) available in stock. Cannot add ${quantity}.`);
+      }
+      if (quantity > 10) throw new Error('Maximum purchase limit is 10 units per item.');
+      const id = `item_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const item = {
+        id,
+        productId,
+        size,
+        color: color || 'Standard',
+        quantity: Number(quantity),
+        savedPrice: price,
+        addedAt: new Date().toISOString(),
+      };
+      data.bags[userId].unshift(item);
+      this.writeJson(data);
+      return { id, isUpdated: false, quantity };
+    }
+
     return this.transaction(() => {
       const existing = this.db.prepare(`
         SELECT id, quantity, saved_price
@@ -252,6 +342,21 @@ class SqliteManager {
   }
 
   updateItem(userId, itemIdOrProdId, { quantity, size, color, availableStock = 10 }) {
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      const items = data.bags?.[userId] || [];
+      const item = items.find((i) => i.id === itemIdOrProdId || i.productId === itemIdOrProdId);
+      if (!item) throw new Error('Item not found in bag.');
+      const newQty = quantity !== undefined ? Number(quantity) : Number(item.quantity);
+      if (newQty > availableStock) throw new Error(`Only ${availableStock} unit(s) available in stock.`);
+      if (newQty > 10) throw new Error('Maximum purchase limit is 10 units per item.');
+      item.quantity = newQty;
+      if (size !== undefined) item.size = String(size).trim();
+      if (color !== undefined) item.color = String(color).trim();
+      this.writeJson(data);
+      return { id: item.id, quantity: newQty, size: item.size, color: item.color };
+    }
+
     return this.transaction(() => {
       const item = this.db.prepare(`
         SELECT id, product_id, size, color, quantity
@@ -307,6 +412,16 @@ class SqliteManager {
   }
 
   removeItem(userId, itemIdOrProdId) {
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      const items = data.bags?.[userId] || [];
+      const idx = items.findIndex((i) => i.id === itemIdOrProdId || i.productId === itemIdOrProdId);
+      if (idx === -1) return null;
+      const [removed] = items.splice(idx, 1);
+      this.writeJson(data);
+      return removed;
+    }
+
     return this.transaction(() => {
       const item = this.db.prepare(`
         SELECT id, product_id, size, color, quantity, saved_price
@@ -330,6 +445,14 @@ class SqliteManager {
   }
 
   clearCart(userId) {
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      const count = data.bags?.[userId]?.length || 0;
+      if (data.bags) data.bags[userId] = [];
+      this.writeJson(data);
+      return { removedCount: count };
+    }
+
     return this.transaction(() => {
       const count = this.db.prepare('SELECT count(*) AS count FROM cart_items WHERE user_id = ?').get(userId);
       this.db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(userId);
@@ -337,10 +460,23 @@ class SqliteManager {
     });
   }
 
-  /**
-   * Atomic Save for Later: Moves item from cart_items to saved_for_later within a single transaction
-   */
   saveForLater(userId, itemIdOrProdId) {
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      if (!data.bags) data.bags = {};
+      if (!data.savedForLater) data.savedForLater = {};
+      if (!data.savedForLater[userId]) data.savedForLater[userId] = [];
+      const items = data.bags[userId] || [];
+      const idx = items.findIndex((i) => i.id === itemIdOrProdId || i.productId === itemIdOrProdId);
+      if (idx === -1) throw new Error('Item not found in bag.');
+      const [item] = items.splice(idx, 1);
+      const savedId = `saved_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const savedItem = { ...item, id: savedId, savedAt: new Date().toISOString() };
+      data.savedForLater[userId].unshift(savedItem);
+      this.writeJson(data);
+      return savedItem;
+    }
+
     return this.transaction(() => {
       const item = this.db.prepare(`
         SELECT id, product_id, size, color, quantity, saved_price
@@ -355,7 +491,6 @@ class SqliteManager {
       const now = new Date().toISOString();
       const savedId = `saved_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
-      // Insert or update in saved_for_later
       this.db.prepare(`
         INSERT INTO saved_for_later (id, user_id, product_id, size, color, quantity, saved_price, saved_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -365,7 +500,6 @@ class SqliteManager {
           saved_at = excluded.saved_at
       `).run(savedId, userId, item.product_id, item.size, item.color, item.quantity, item.saved_price, now);
 
-      // Remove from cart_items
       this.db.prepare('DELETE FROM cart_items WHERE id = ?').run(item.id);
 
       return {
@@ -378,10 +512,23 @@ class SqliteManager {
     });
   }
 
-  /**
-   * Atomic Move to Cart: Moves item from saved_for_later to cart_items within a single transaction
-   */
   moveToCart(userId, itemIdOrProdId, availableStock = 10) {
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      if (!data.bags) data.bags = {};
+      if (!data.bags[userId]) data.bags[userId] = [];
+      const savedList = data.savedForLater?.[userId] || [];
+      const idx = savedList.findIndex((i) => i.id === itemIdOrProdId || i.productId === itemIdOrProdId);
+      if (idx === -1) throw new Error('Item not found in Saved for Later.');
+      if (availableStock <= 0) throw new Error('Cannot move to bag: Item is out of stock.');
+      const [saved] = savedList.splice(idx, 1);
+      const cartId = `item_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const cartItem = { ...saved, id: cartId, quantity: Math.min(Number(saved.quantity), availableStock) };
+      data.bags[userId].unshift(cartItem);
+      this.writeJson(data);
+      return cartItem;
+    }
+
     return this.transaction(() => {
       const saved = this.db.prepare(`
         SELECT id, product_id, size, color, quantity, saved_price
@@ -401,7 +548,6 @@ class SqliteManager {
       const cartId = `item_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
       const targetQty = Math.min(Number(saved.quantity), availableStock);
 
-      // Insert or merge into cart_items
       this.db.prepare(`
         INSERT INTO cart_items (id, user_id, product_id, size, color, quantity, saved_price, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -410,7 +556,6 @@ class SqliteManager {
           updated_at = excluded.updated_at
       `).run(cartId, userId, saved.product_id, saved.size, saved.color, targetQty, saved.saved_price, now, now);
 
-      // Remove from saved_for_later
       this.db.prepare('DELETE FROM saved_for_later WHERE id = ?').run(saved.id);
 
       return {
@@ -424,6 +569,16 @@ class SqliteManager {
   }
 
   removeSavedItem(userId, itemIdOrProdId) {
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      const savedList = data.savedForLater?.[userId] || [];
+      const idx = savedList.findIndex((i) => i.id === itemIdOrProdId || i.productId === itemIdOrProdId);
+      if (idx === -1) return null;
+      const [removed] = savedList.splice(idx, 1);
+      this.writeJson(data);
+      return removed;
+    }
+
     return this.transaction(() => {
       const item = this.db.prepare(`
         SELECT id, product_id, size
@@ -440,10 +595,24 @@ class SqliteManager {
     });
   }
 
-  /**
-   * Merge guest cart & saved items into authenticated user account
-   */
   mergeGuestCart(userId, { cartItems = [], savedForLaterItems = [] }) {
+    if (!this.isSqliteActive || !this.db) {
+      const data = this.readJson();
+      if (!data.bags) data.bags = {};
+      if (!data.bags[userId]) data.bags[userId] = [];
+      for (const item of cartItems) {
+        if (!item.productId) continue;
+        const existing = data.bags[userId].find((i) => i.productId === item.productId && i.size === item.size);
+        if (existing) {
+          existing.quantity = Math.min(10, Number(existing.quantity) + Number(item.quantity || 1));
+        } else {
+          data.bags[userId].unshift(item);
+        }
+      }
+      this.writeJson(data);
+      return { mergedCount: cartItems.length };
+    }
+
     return this.transaction(() => {
       let mergedCount = 0;
       const now = new Date().toISOString();
@@ -501,6 +670,9 @@ class SqliteManager {
   }
 
   getAllBags() {
+    if (!this.isSqliteActive || !this.db) {
+      return this.readJson().bags || {};
+    }
     const rows = this.db.prepare(`
       SELECT user_id, id, product_id AS productId, size, color, quantity, saved_price AS savedPrice, created_at AS addedAt
       FROM cart_items
@@ -522,6 +694,9 @@ class SqliteManager {
   }
 
   getAllSaved() {
+    if (!this.isSqliteActive || !this.db) {
+      return this.readJson().savedForLater || {};
+    }
     const rows = this.db.prepare(`
       SELECT user_id, id, product_id AS productId, size, color, quantity, saved_price AS savedPrice, saved_at AS savedAt
       FROM saved_for_later
