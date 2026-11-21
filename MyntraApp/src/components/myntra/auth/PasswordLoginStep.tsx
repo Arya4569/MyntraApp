@@ -172,6 +172,16 @@ export const PasswordLoginStep: React.FC<PasswordLoginStepProps> = ({
           )}
         </TouchableOpacity>
 
+        {/* Switch to OTP Login Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={onSwitchToOtp || onSwitchToSignUp}
+          style={styles.otpSwitchBtn}
+          disabled={isLoading}>
+          <Ionicons name="chatbox-ellipses-outline" size={18} color={MyntraColors.primary} />
+          <Text style={styles.otpSwitchText}>LOG IN WITH OTP</Text>
+        </TouchableOpacity>
+
         {/* Sign Up Link */}
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>New to Myntra?</Text>

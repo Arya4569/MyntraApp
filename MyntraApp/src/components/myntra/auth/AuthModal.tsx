@@ -349,7 +349,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         styles.headerTabText,
                         step === 'password_login' && styles.headerTabTextActive,
                       ]}>
-                      LOG IN
+                      PASSWORD
                     </Text>
                   </TouchableOpacity>
 
@@ -367,7 +367,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         styles.headerTabText,
                         step === 'signup_otp' && styles.headerTabTextActive,
                       ]}>
-                      SIGN UP
+                      OTP LOGIN / SIGN UP
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -391,6 +391,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <PasswordLoginStep
                   onLogin={handlePasswordLogin}
                   onSwitchToSignUp={() => {
+                    setErrorMessage(undefined);
+                    setStep('signup_otp');
+                  }}
+                  onSwitchToOtp={() => {
                     setErrorMessage(undefined);
                     setStep('signup_otp');
                   }}
