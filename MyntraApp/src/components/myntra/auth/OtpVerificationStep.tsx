@@ -36,9 +36,18 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
   cooldownSeconds = 30,
   mode = 'signup',
 }) => {
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(() => devOtp || '');
+  const [prevDevOtp, setPrevDevOtp] = useState(devOtp);
   const [secondsRemaining, setSecondsRemaining] = useState(cooldownSeconds);
   const [showHelpAlert, setShowHelpAlert] = useState(false);
+
+  // Auto-fill devOtp when received
+  if (devOtp !== prevDevOtp) {
+    setPrevDevOtp(devOtp);
+    if (devOtp && !otp) {
+      setOtp(devOtp);
+    }
+  }
 
   // Mask destination for privacy
   const isEmail = mobile.includes('@');
@@ -58,13 +67,6 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
 
     return () => clearInterval(timer);
   }, [secondsRemaining]);
-
-  // Auto-fill devOtp in demo / simulation mode
-  useEffect(() => {
-    if (devOtp && !otp) {
-      setOtp(devOtp);
-    }
-  }, [devOtp]);
 
   const handleOtpChange = (text: string) => {
     const digitsOnly = text.replace(/\D/g, '').slice(0, 4);

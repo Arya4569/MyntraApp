@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 
-import { MyntraColors, Spacing } from '@/constants/myntra-theme';
+import { Spacing } from '@/constants/myntra-theme';
 import { Product, PRODUCTS, PROMO_BANNERS } from '@/data/mock-data';
 import { useTheme } from '@/hooks/use-theme';
 import { storeService } from '@/services/store-service';
@@ -305,7 +305,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               style={styles.headerBackBtn}
               activeOpacity={0.7}
               accessibilityLabel="Close product details">
-              <Ionicons name="arrow-back" size={22} color={MyntraColors.text} />
+              <Ionicons name="arrow-back" size={22} color={colors.text} />
             </TouchableOpacity>
 
             <View style={styles.headerTitleWrap}>
@@ -331,7 +331,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   style={styles.headerIconBtn}
                   activeOpacity={0.7}
                   accessibilityLabel="Share product">
-                  <Ionicons name="share-social-outline" size={20} color={MyntraColors.text} />
+                  <Ionicons name="share-social-outline" size={20} color={colors.text} />
                 </TouchableOpacity>
               )}
 
@@ -346,7 +346,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <Ionicons
                       name={isWishlisted ? 'heart' : 'heart-outline'}
                       size={22}
-                      color={isWishlisted ? MyntraColors.primary : MyntraColors.text}
+                      color={isWishlisted ? colors.primary : colors.text}
                     />
                   </Animated.View>
                 </TouchableOpacity>
@@ -364,7 +364,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 style={styles.headerBagBtn}
                 activeOpacity={0.7}
                 accessibilityLabel="View shopping bag">
-                <Ionicons name="bag-handle-outline" size={21} color={MyntraColors.text} />
+                <Ionicons name="bag-handle-outline" size={21} color={colors.text} />
                 {bagCount > 0 && (
                   <View style={styles.headerBagBadge}>
                     <Text style={styles.headerBagBadgeText}>
@@ -379,7 +379,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           {/* If product is null (loading or error state) */}
           {!product ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={MyntraColors.primary} />
+              <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.loadingText}>Loading product details...</Text>
             </View>
           ) : (
@@ -401,7 +401,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <Text style={styles.modalRatingText}>
                       {product.rating.toFixed(1)}
                     </Text>
-                    <Ionicons name="star" size={11} color={MyntraColors.ratingGreen} />
+                    <Ionicons name="star" size={11} color={colors.ratingGreen} />
                     <Text style={styles.modalRatingDivider}>|</Text>
                     <Text style={styles.modalRatingCount}>{product.ratingCount}</Text>
                   </View>
@@ -461,7 +461,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <View style={styles.infoSection}>
                   <View style={styles.brandVerifiedRow}>
                     <Text style={styles.brandTitle}>{product.brand}</Text>
-                    <Ionicons name="checkmark-circle" size={15} color={MyntraColors.ratingGreen} />
+                    <Ionicons name="checkmark-circle" size={15} color={colors.ratingGreen} />
                   </View>
                   <Text style={styles.productTitle}>{product.name}</Text>
 
@@ -660,7 +660,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 {applicableCoupon && (
                   <View style={styles.sectionCard}>
                     <View style={styles.offersHeaderRow}>
-                      <Ionicons name="pricetag-outline" size={16} color={MyntraColors.primary} />
+                      <Ionicons name="pricetag-outline" size={16} color={colors.primary} />
                       <Text style={styles.offersHeading}>BEST OFFERS</Text>
                     </View>
 
@@ -690,7 +690,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                     {/* Bank Offer Pill */}
                     <View style={styles.bankOfferRow}>
-                      <Ionicons name="card-outline" size={15} color={MyntraColors.text} />
+                      <Ionicons name="card-outline" size={15} color={colors.text} />
                       <Text style={styles.bankOfferText}>
                         10% Instant Discount on HDFC & ICICI Bank Credit Cards on min. spend of ₹1,500
                       </Text>
@@ -698,7 +698,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                     {/* EMI Option */}
                     <View style={styles.bankOfferRow}>
-                      <Ionicons name="calendar-outline" size={15} color={MyntraColors.text} />
+                      <Ionicons name="calendar-outline" size={15} color={colors.text} />
                       <Text style={styles.bankOfferText}>
                         EMI starting from ₹{Math.round(product.price / 3)}/month with No Cost EMI available
                       </Text>
@@ -709,7 +709,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 {/* 7. Delivery Options / Indian PIN code Check */}
                 <View style={styles.sectionCard}>
                   <View style={styles.deliveryHeaderRow}>
-                    <Ionicons name="location-outline" size={16} color={MyntraColors.primary} />
+                    <Ionicons name="location-outline" size={16} color={colors.primary} />
                     <Text style={styles.sectionLabel}>DELIVERY OPTIONS</Text>
                   </View>
 
@@ -717,7 +717,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <TextInput
                       style={styles.pincodeInput}
                       placeholder="Enter 6-digit Indian PIN code"
-                      placeholderTextColor={MyntraColors.textMuted}
+                      placeholderTextColor={colors.textMuted}
                       keyboardType="number-pad"
                       maxLength={6}
                       value={pincode}
@@ -745,7 +745,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       <Ionicons
                         name={pincodeValid ? 'checkmark-circle' : 'alert-circle'}
                         size={18}
-                        color={pincodeValid ? MyntraColors.ratingGreen : '#d32f2f'}
+                        color={pincodeValid ? colors.ratingGreen : colors.badgeRed}
                       />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.pincodeStatusTitle}>
@@ -765,17 +765,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   {/* Delivery Perks row */}
                   <View style={styles.deliveryPerksRow}>
                     <View style={styles.deliveryPerk}>
-                      <Ionicons name="flash-outline" size={18} color={MyntraColors.primary} />
+                      <Ionicons name="flash-outline" size={18} color={colors.primary} />
                       <Text style={styles.deliveryPerkText}>
                         {product.deliveryTime || 'Fast Delivery'}
                       </Text>
                     </View>
                     <View style={styles.deliveryPerk}>
-                      <Ionicons name="repeat-outline" size={18} color={MyntraColors.primary} />
+                      <Ionicons name="repeat-outline" size={18} color={colors.primary} />
                       <Text style={styles.deliveryPerkText}>14 Days Easy Returns</Text>
                     </View>
                     <View style={styles.deliveryPerk}>
-                      <Ionicons name="shield-checkmark-outline" size={18} color={MyntraColors.primary} />
+                      <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
                       <Text style={styles.deliveryPerkText}>100% Original</Text>
                     </View>
                   </View>
@@ -804,7 +804,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   <View style={styles.ratingsHeaderRow}>
                     <Text style={styles.sectionLabel}>RATINGS & REVIEWS</Text>
                     <View style={styles.verifiedBuyersTag}>
-                      <Ionicons name="shield-checkmark" size={12} color={MyntraColors.ratingGreen} />
+                      <Ionicons name="shield-checkmark" size={12} color={colors.ratingGreen} />
                       <Text style={styles.verifiedBuyersText}>Verified Buyers</Text>
                     </View>
                   </View>
@@ -814,7 +814,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     <View style={styles.bigScoreBox}>
                       <View style={styles.bigScoreHeader}>
                         <Text style={styles.bigScoreNumber}>{product.rating.toFixed(1)}</Text>
-                        <Ionicons name="star" size={20} color={MyntraColors.ratingGreen} />
+                        <Ionicons name="star" size={20} color={colors.ratingGreen} />
                       </View>
                       <Text style={styles.bigScoreCount}>{product.ratingCount} Ratings</Text>
                     </View>
@@ -834,10 +834,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                                     width: `${pct}%`,
                                     backgroundColor:
                                       star >= 4
-                                        ? MyntraColors.ratingGreen
+                                        ? colors.ratingGreen
                                         : star === 3
-                                        ? '#ff9800'
-                                        : '#e53935',
+                                        ? colors.discountOrange
+                                        : colors.badgeRed,
                                   },
                                 ]}
                               />
@@ -851,7 +851,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                   {/* Customer Sentiment Pill */}
                   <View style={styles.customerSentimentCard}>
-                    <Ionicons name="thumbs-up-outline" size={16} color={MyntraColors.primary} />
+                    <Ionicons name="thumbs-up-outline" size={16} color={colors.primary} />
                     <Text style={styles.customerSentimentText}>
                       {Math.round(Math.min(98, product.rating * 22))}% of customers recommend this product for quality & fit
                     </Text>
@@ -859,7 +859,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
                   {/* Authentic Transparency Note (Rule 4 strict adherence) */}
                   <View style={styles.reviewPolicyCard}>
-                    <Ionicons name="information-circle-outline" size={15} color={MyntraColors.textMuted} />
+                    <Ionicons name="information-circle-outline" size={15} color={colors.textMuted} />
                     <Text style={styles.reviewPolicyText}>
                       Customer reviews with real customer photos are synced from verified orders. Have you received this product? Share feedback after delivery.
                     </Text>
@@ -922,7 +922,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   <Ionicons
                     name={isWishlisted ? 'heart' : 'heart-outline'}
                     size={20}
-                    color={isWishlisted ? MyntraColors.primary : MyntraColors.text}
+                    color={isWishlisted ? colors.primary : colors.text}
                   />
                   <Text
                     style={[
@@ -997,7 +997,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   onPress={() => setShowSizeChart(false)}
                   style={styles.sizeChartCloseBtn}
                   activeOpacity={0.7}>
-                  <Ionicons name="close" size={20} color={MyntraColors.text} />
+                  <Ionicons name="close" size={20} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -1032,7 +1032,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               </View>
 
               <View style={styles.sizeChartTip}>
-                <Ionicons name="bulb-outline" size={15} color={MyntraColors.primary} />
+                <Ionicons name="bulb-outline" size={15} color={colors.primary} />
                 <Text style={styles.sizeChartTipText}>
                   Tip: If between sizes, we recommend ordering one size larger for a comfortable fit.
                 </Text>

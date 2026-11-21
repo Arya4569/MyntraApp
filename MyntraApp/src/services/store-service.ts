@@ -1635,6 +1635,7 @@ class StoreService {
       if (options?.page) params.append('page', String(options.page));
       if (options?.limit) params.append('limit', String(options.limit));
       if (options?.status) params.append('status', options.status);
+      if (options?.paymentMethod && options.paymentMethod !== 'all') params.append('paymentMethod', options.paymentMethod);
       if (options?.sortBy) params.append('sortBy', options.sortBy);
       if (options?.search) params.append('search', options.search);
       if (options?.dateRange && options.dateRange !== 'all') params.append('dateRange', options.dateRange);
@@ -2308,11 +2309,21 @@ class StoreService {
     try {
       const keysToRemove: string[] = [
         STORE_KEYS.ORDERS,
+        STORE_KEYS.ORDERS_GUEST,
+        STORE_KEYS.CART,
+        STORE_KEYS.CART_GUEST,
         STORE_KEYS.CART_LEGACY,
+        STORE_KEYS.SAVED_FOR_LATER,
+        STORE_KEYS.SAVED_FOR_LATER_GUEST,
         STORE_KEYS.SAVED_FOR_LATER_LEGACY,
+        STORE_KEYS.WISHLIST_GUEST,
         STORE_KEYS.WISHLIST_LEGACY,
+        STORE_KEYS.RECENTLY_VIEWED,
+        STORE_KEYS.RECENTLY_VIEWED_GUEST,
         STORE_KEYS.RECENTLY_VIEWED_LEGACY,
         STORE_KEYS.ADDRESSES,
+        STORE_KEYS.ADDRESSES_GUEST,
+        STORE_KEYS.NOTIFICATION_PREFS_GUEST,
       ];
 
       if (userId) {
@@ -2352,7 +2363,7 @@ class StoreService {
     if (userId || token) {
       try {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${getApiBaseUrl()}/recently-viewed?limit=50`, {
+        const response = await fetch(`${getApiBaseUrl()}/recently-viewed?limit=20`, {
           method: 'GET',
           headers,
         });
@@ -2360,7 +2371,7 @@ class StoreService {
         if (response.ok) {
           const resData = await response.json();
           if (resData && Array.isArray(resData.productIds)) {
-            const ids = resData.productIds.slice(0, 50);
+            const ids = resData.productIds.slice(0, 20);
             const userKey = this.getRecentlyViewedStorageKey(userId);
             await AsyncStorage.setItem(userKey, JSON.stringify(ids));
             return ids;
@@ -2374,7 +2385,7 @@ class StoreService {
       try {
         const userKey = this.getRecentlyViewedStorageKey(userId);
         const saved = await AsyncStorage.getItem(userKey);
-        if (saved) return JSON.parse(saved).slice(0, 50);
+        if (saved) return JSON.parse(saved).slice(0, 20);
       } catch {}
     }
 
@@ -2385,7 +2396,7 @@ class StoreService {
         // Fallback to legacy key
         data = await AsyncStorage.getItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY);
       }
-      return data ? JSON.parse(data).slice(0, 50) : [];
+      return data ? JSON.parse(data).slice(0, 20) : [];
     } catch {
       return [];
     }
@@ -2393,7 +2404,7 @@ class StoreService {
 
   /**
    * Track a product view.
-   * Stores latest 50 unique products, newest first.
+   * Stores latest 20 unique products, newest first.
    * Re-viewing moves product to top without creating duplicates.
    * Persists to server if user is logged in, and updates local storage.
    */
@@ -2415,7 +2426,7 @@ class StoreService {
         if (response.ok) {
           const resData = await response.json();
           if (resData && Array.isArray(resData.productIds)) {
-            const ids = resData.productIds.slice(0, 50);
+            const ids = resData.productIds.slice(0, 20);
             const userKey = this.getRecentlyViewedStorageKey(userId);
             await AsyncStorage.setItem(userKey, JSON.stringify(ids));
             return ids;
@@ -2430,7 +2441,7 @@ class StoreService {
         const userKey = this.getRecentlyViewedStorageKey(userId);
         const data = await AsyncStorage.getItem(userKey);
         const current: string[] = data ? JSON.parse(data) : [];
-        const updated = [cleanId, ...current.filter((id) => id !== cleanId)].slice(0, 50);
+        const updated = [cleanId, ...current.filter((id) => id !== cleanId)].slice(0, 20);
         await AsyncStorage.setItem(userKey, JSON.stringify(updated));
         return updated;
       } catch {
@@ -2450,7 +2461,7 @@ class StoreService {
         if (legacy) current = JSON.parse(legacy);
       }
 
-      const updated = [cleanId, ...current.filter((id) => id !== cleanId)].slice(0, 50);
+      const updated = [cleanId, ...current.filter((id) => id !== cleanId)].slice(0, 20);
       await AsyncStorage.setItem(guestKey, JSON.stringify(updated));
       await AsyncStorage.setItem(STORE_KEYS.RECENTLY_VIEWED_LEGACY, JSON.stringify(updated));
       return updated;
@@ -2461,7 +2472,7 @@ class StoreService {
 
   /**
    * Merge guest recently viewed items into server/user account upon login
-   * Removes duplicates, preserves newest first, caps at 50, and syncs to backend.
+   * Removes duplicates, preserves newest first, caps at 20, and syncs to backend.
    */
   async mergeGuestRecentlyViewed(userId: string): Promise<string[]> {
     try {
@@ -2489,7 +2500,7 @@ class StoreService {
           if (response.ok) {
             const resData = await response.json();
             if (resData && Array.isArray(resData.productIds)) {
-              const ids = resData.productIds.slice(0, 50);
+              const ids = resData.productIds.slice(0, 20);
               const userKey = this.getRecentlyViewedStorageKey(userId);
               await AsyncStorage.setItem(userKey, JSON.stringify(ids));
               await AsyncStorage.removeItem(STORE_KEYS.RECENTLY_VIEWED_GUEST);
@@ -2507,7 +2518,7 @@ class StoreService {
       const userData = await AsyncStorage.getItem(userKey);
       const userIds: string[] = userData ? JSON.parse(userData) : [];
 
-      const mergedList = Array.from(new Set([...guestIds, ...userIds])).slice(0, 50);
+      const mergedList = Array.from(new Set([...guestIds, ...userIds])).slice(0, 20);
 
       await AsyncStorage.setItem(userKey, JSON.stringify(mergedList));
       await AsyncStorage.removeItem(STORE_KEYS.RECENTLY_VIEWED_GUEST);
@@ -3200,62 +3211,82 @@ class StoreService {
   }
 
   /**
-   * Real-time subscription to backend inventory stock and notification updates via SSE
+   * Real-time subscription to backend inventory stock, orders, notifications, and recently-viewed updates via SSE
    */
   subscribeToRealtimeUpdates(callbacks: {
     onStockUpdate?: (data: { productId: string; stockCount: number; inStock: boolean; timestamp: string }) => void;
     onOrderUpdate?: (data: { orderId: string; status: string; paymentStatus?: string; timestamp: string }) => void;
     onNotification?: (data: { notification: any; timestamp: string }) => void;
+    onRecentlyViewedUpdate?: (data: { productIds: string[]; products: any[]; count: number; timestamp: string }) => void;
   }): () => void {
     let isSubscribed = true;
     let eventSource: any = null;
+    let pollInterval: any = null;
 
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'EventSource' in window) {
+    const setupConnection = async () => {
       try {
-        authService
-          .getToken()
-          .then((token) => {
+        const token = await authService.getToken();
+        if (!isSubscribed) return;
+
+        const streamUrl = token
+          ? `${getApiBaseUrl()}/realtime/stream?token=${encodeURIComponent(token)}`
+          : `${getApiBaseUrl()}/realtime/stream`;
+
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && 'EventSource' in window) {
+          eventSource = new EventSource(streamUrl);
+
+          eventSource.addEventListener('stock_update', (e: any) => {
             if (!isSubscribed) return;
-            const streamUrl = token
-              ? `${getApiBaseUrl()}/realtime/stream?token=${encodeURIComponent(token)}`
-              : `${getApiBaseUrl()}/realtime/stream`;
-
-            eventSource = new EventSource(streamUrl);
-
-            eventSource.addEventListener('stock_update', (e: any) => {
-              if (!isSubscribed) return;
-              try {
-                const data = JSON.parse(e.data);
-                callbacks.onStockUpdate?.(data);
-              } catch {}
-            });
-
-            eventSource.addEventListener('order_update', (e: any) => {
-              if (!isSubscribed) return;
-              try {
-                const data = JSON.parse(e.data);
-                callbacks.onOrderUpdate?.(data);
-              } catch {}
-            });
-
-            eventSource.addEventListener('notification', (e: any) => {
-              if (!isSubscribed) return;
-              try {
-                const data = JSON.parse(e.data);
-                callbacks.onNotification?.(data);
-              } catch {}
-            });
-          })
-          .catch((err) => {
-            console.warn('Realtime subscription token lookup failed:', err);
+            try {
+              const data = JSON.parse(e.data);
+              callbacks.onStockUpdate?.(data);
+            } catch {}
           });
+
+          eventSource.addEventListener('order_update', (e: any) => {
+            if (!isSubscribed) return;
+            try {
+              const data = JSON.parse(e.data);
+              callbacks.onOrderUpdate?.(data);
+            } catch {}
+          });
+
+          eventSource.addEventListener('notification', (e: any) => {
+            if (!isSubscribed) return;
+            try {
+              const data = JSON.parse(e.data);
+              callbacks.onNotification?.(data);
+            } catch {}
+          });
+
+          eventSource.addEventListener('recently_viewed_update', (e: any) => {
+            if (!isSubscribed) return;
+            try {
+              const data = JSON.parse(e.data);
+              callbacks.onRecentlyViewedUpdate?.(data);
+            } catch {}
+          });
+
+          eventSource.onerror = () => {
+            // Reconnect gracefully on connection drop
+            if (eventSource && isSubscribed) {
+              eventSource.close();
+              setTimeout(() => {
+                if (isSubscribed) setupConnection();
+              }, 3000);
+            }
+          };
+        }
       } catch (err) {
-        console.warn('Realtime EventSource subscription failed:', err);
+        console.warn('Realtime subscription initialization failed:', err);
       }
-    }
+    };
+
+    setupConnection();
 
     return () => {
       isSubscribed = false;
+      if (pollInterval) clearInterval(pollInterval);
       if (eventSource) {
         try {
           eventSource.close();

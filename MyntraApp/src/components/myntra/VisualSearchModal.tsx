@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -13,8 +13,9 @@ import {
   View,
 } from 'react-native';
 
-import { MyntraColors, Spacing } from '@/constants/myntra-theme';
+import { Spacing, ThemeTokens } from '@/constants/theme';
 import { Product } from '@/data/mock-data';
+import { useTheme } from '@/hooks/use-theme';
 
 interface VisualSearchModalProps {
   visible: boolean;
@@ -83,6 +84,9 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
   onApplyCategoryOrQuery,
   products = [],
 }) => {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
+
   const [isScanning, setIsScanning] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<FashionPreset | null>(null);
   const [flashOn, setFlashOn] = useState(false);
@@ -368,7 +372,7 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
             onPress={handleClose}
             activeOpacity={0.7}
             accessibilityLabel="Close photo search">
-            <Ionicons name="close" size={24} color={MyntraColors.white} />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>PHOTO SEARCH</Text>
@@ -381,7 +385,7 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
             <Ionicons
               name={flashOn ? 'flash' : 'flash-off-outline'}
               size={20}
-              color={flashOn ? '#ffdf00' : MyntraColors.white}
+              color={flashOn ? colors.saleYellow : colors.text}
             />
           </TouchableOpacity>
         </View>
@@ -449,7 +453,7 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
           {selectedPreset && !isScanning && (
             <View style={styles.detectedTagsBox}>
               <View style={styles.detectedHeader}>
-                <Ionicons name="sparkles" size={14} color="#ff3f6c" />
+                <Ionicons name="sparkles" size={14} color={colors.primary} />
                 <Text style={styles.detectedTitle}>AI STYLE DETECTED</Text>
               </View>
               <View style={styles.tagChipsRow}>
@@ -541,7 +545,7 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
                   <Text style={styles.viewAllMatchText}>
                     EXPLORE ALL {selectedPreset.query.toUpperCase()}
                   </Text>
-                  <Ionicons name="arrow-forward" size={16} color="#fff" />
+                  <Ionicons name="arrow-forward" size={16} color={colors.white} />
                 </TouchableOpacity>
               )}
             </View>
@@ -574,351 +578,352 @@ export const VisualSearchModal: React.FC<VisualSearchModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a0a0a',
-  },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    backgroundColor: '#000',
-    borderBottomWidth: 1,
-    borderBottomColor: '#222',
-    marginTop: Platform.OS === 'android' ? 24 : 0,
-  },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerCenter: {
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: MyntraColors.white,
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
-  headerSubtitle: {
-    color: '#888',
-    fontSize: 10,
-    marginTop: 1,
-  },
-  viewfinderContainer: {
-    flex: 1,
-    backgroundColor: '#121212',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  viewfinderImage: {
-    width: '100%',
-    height: '100%',
-  },
-  simulatedCamera: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  cameraHelpText: {
-    color: '#777',
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 18,
-  },
-  uploadPromptRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 18,
-  },
-  uploadPromptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#ff3f6c',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-    shadowColor: '#ff3f6c',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  uploadPromptSecondaryBtn: {
-    backgroundColor: '#333333',
-    shadowColor: '#000000',
-  },
-  uploadPromptText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  reUploadBtn: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    zIndex: 10,
-  },
-  reUploadText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  frameCornerTL: {
-    position: 'absolute',
-    top: 30,
-    left: 30,
-    width: 32,
-    height: 32,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: '#ff3f6c',
-    borderRadius: 2,
-  },
-  frameCornerTR: {
-    position: 'absolute',
-    top: 30,
-    right: 30,
-    width: 32,
-    height: 32,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
-    borderColor: '#ff3f6c',
-    borderRadius: 2,
-  },
-  frameCornerBL: {
-    position: 'absolute',
-    bottom: 80,
-    left: 30,
-    width: 32,
-    height: 32,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
-    borderColor: '#ff3f6c',
-    borderRadius: 2,
-  },
-  frameCornerBR: {
-    position: 'absolute',
-    bottom: 80,
-    right: 30,
-    width: 32,
-    height: 32,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderColor: '#ff3f6c',
-    borderRadius: 2,
-  },
-  scanLaserLine: {
-    position: 'absolute',
-    top: '45%',
-    left: 30,
-    right: 30,
-    height: 2,
-    backgroundColor: '#ff3f6c',
-  },
-  scanGlow: {
-    position: 'absolute',
-    top: -6,
-    left: 0,
-    right: 0,
-    height: 14,
-    backgroundColor: 'rgba(255, 63, 108, 0.35)',
-    borderRadius: 7,
-  },
-  detectedTagsBox: {
-    position: 'absolute',
-    top: 40,
-    left: 40,
-    right: 40,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ff3f6c',
-  },
-  detectedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  detectedTitle: {
-    color: '#ff3f6c',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  tagChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  tagChip: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  tagChipText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  cameraControlsRow: {
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 30,
-  },
-  shutterBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 4,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  shutterInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#ff3f6c',
-  },
-  controlSmallBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bottomDrawer: {
-    backgroundColor: '#161616',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 14,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#282828',
-  },
-  drawerTitle: {
-    color: '#aaa',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: 10,
-  },
-  presetsScroll: {
-    paddingHorizontal: Spacing.lg,
-    gap: 12,
-  },
-  presetCard: {
-    width: 100,
-    backgroundColor: '#222',
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  presetCardActive: {
-    borderColor: '#ff3f6c',
-    borderWidth: 2,
-  },
-  presetImage: {
-    width: '100%',
-    height: 90,
-  },
-  presetTitle: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 6,
-    paddingTop: 6,
-  },
-  presetTagText: {
-    color: '#ff3f6c',
-    fontSize: 9,
-    fontWeight: '600',
-    paddingHorizontal: 6,
-    paddingBottom: 6,
-  },
-  resultsScroll: {
-    paddingHorizontal: Spacing.lg,
-    gap: 12,
-  },
-  resultCard: {
-    width: 110,
-    backgroundColor: '#222',
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  resultImage: {
-    width: '100%',
-    height: 100,
-  },
-  resultInfo: {
-    padding: 6,
-  },
-  resultBrand: {
-    color: '#888',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  resultName: {
-    color: '#eee',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  resultPrice: {
-    color: '#ff3f6c',
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  viewAllMatchBtn: {
-    marginHorizontal: Spacing.lg,
-    marginTop: 12,
-    backgroundColor: '#ff3f6c',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6,
-  },
-  viewAllMatchText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-});
+const getStyles = (colors: ThemeTokens, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.md,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      marginTop: Platform.OS === 'android' ? 24 : 0,
+    },
+    headerBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerCenter: {
+      alignItems: 'center',
+    },
+    headerTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '800',
+      letterSpacing: 1.5,
+    },
+    headerSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 10,
+      marginTop: 1,
+    },
+    viewfinderContainer: {
+      flex: 1,
+      backgroundColor: isDark ? '#121212' : '#222222',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    viewfinderImage: {
+      width: '100%',
+      height: '100%',
+    },
+    simulatedCamera: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 40,
+    },
+    cameraHelpText: {
+      color: '#aaaaaa',
+      fontSize: 13,
+      textAlign: 'center',
+      marginTop: 16,
+      lineHeight: 18,
+    },
+    uploadPromptRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: 18,
+    },
+    uploadPromptBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 24,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    uploadPromptSecondaryBtn: {
+      backgroundColor: isDark ? '#333333' : '#555555',
+      shadowColor: colors.shadowColor,
+    },
+    uploadPromptText: {
+      color: colors.white,
+      fontSize: 12,
+      fontWeight: '800',
+      letterSpacing: 0.8,
+    },
+    reUploadBtn: {
+      position: 'absolute',
+      top: 20,
+      right: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(0,0,0,0.65)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.2)',
+      zIndex: 10,
+    },
+    reUploadText: {
+      color: colors.white,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    frameCornerTL: {
+      position: 'absolute',
+      top: 30,
+      left: 30,
+      width: 32,
+      height: 32,
+      borderTopWidth: 3,
+      borderLeftWidth: 3,
+      borderColor: colors.primary,
+      borderRadius: 2,
+    },
+    frameCornerTR: {
+      position: 'absolute',
+      top: 30,
+      right: 30,
+      width: 32,
+      height: 32,
+      borderTopWidth: 3,
+      borderRightWidth: 3,
+      borderColor: colors.primary,
+      borderRadius: 2,
+    },
+    frameCornerBL: {
+      position: 'absolute',
+      bottom: 80,
+      left: 30,
+      width: 32,
+      height: 32,
+      borderBottomWidth: 3,
+      borderLeftWidth: 3,
+      borderColor: colors.primary,
+      borderRadius: 2,
+    },
+    frameCornerBR: {
+      position: 'absolute',
+      bottom: 80,
+      right: 30,
+      width: 32,
+      height: 32,
+      borderBottomWidth: 3,
+      borderRightWidth: 3,
+      borderColor: colors.primary,
+      borderRadius: 2,
+    },
+    scanLaserLine: {
+      position: 'absolute',
+      top: '45%',
+      left: 30,
+      right: 30,
+      height: 2,
+      backgroundColor: colors.primary,
+    },
+    scanGlow: {
+      position: 'absolute',
+      top: -6,
+      left: 0,
+      right: 0,
+      height: 14,
+      backgroundColor: 'rgba(255, 63, 108, 0.35)',
+      borderRadius: 7,
+    },
+    detectedTagsBox: {
+      position: 'absolute',
+      top: 40,
+      left: 40,
+      right: 40,
+      backgroundColor: 'rgba(0,0,0,0.75)',
+      padding: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    detectedHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 6,
+    },
+    detectedTitle: {
+      color: colors.primary,
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 1,
+    },
+    tagChipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    tagChip: {
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 12,
+    },
+    tagChipText: {
+      color: colors.white,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    cameraControlsRow: {
+      position: 'absolute',
+      bottom: 16,
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      paddingHorizontal: 30,
+    },
+    shutterBtn: {
+      width: 68,
+      height: 68,
+      borderRadius: 34,
+      borderWidth: 4,
+      borderColor: colors.white,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'transparent',
+    },
+    shutterInner: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: colors.primary,
+    },
+    controlSmallBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bottomDrawer: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingTop: 14,
+      paddingBottom: 24,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    drawerTitle: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 1,
+      paddingHorizontal: Spacing.lg,
+      marginBottom: 10,
+    },
+    presetsScroll: {
+      paddingHorizontal: Spacing.lg,
+      gap: 12,
+    },
+    presetCard: {
+      width: 100,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 8,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    presetCardActive: {
+      borderColor: colors.primary,
+      borderWidth: 2,
+    },
+    presetImage: {
+      width: '100%',
+      height: 90,
+    },
+    presetTitle: {
+      color: colors.text,
+      fontSize: 11,
+      fontWeight: '700',
+      paddingHorizontal: 6,
+      paddingTop: 6,
+    },
+    presetTagText: {
+      color: colors.primary,
+      fontSize: 9,
+      fontWeight: '600',
+      paddingHorizontal: 6,
+      paddingBottom: 6,
+    },
+    resultsScroll: {
+      paddingHorizontal: Spacing.lg,
+      gap: 12,
+    },
+    resultCard: {
+      width: 110,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 8,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    resultImage: {
+      width: '100%',
+      height: 100,
+    },
+    resultInfo: {
+      padding: 6,
+    },
+    resultBrand: {
+      color: colors.textSecondary,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    resultName: {
+      color: colors.text,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    resultPrice: {
+      color: colors.primary,
+      fontSize: 12,
+      fontWeight: '800',
+      marginTop: 2,
+    },
+    viewAllMatchBtn: {
+      marginHorizontal: Spacing.lg,
+      marginTop: 12,
+      backgroundColor: colors.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      borderRadius: 8,
+      gap: 6,
+    },
+    viewAllMatchText: {
+      color: colors.white,
+      fontSize: 12,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+  });

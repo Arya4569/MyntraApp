@@ -15,7 +15,9 @@ import {
   View,
 } from 'react-native';
 
-import { MyntraColors, Spacing } from '@/constants/myntra-theme';
+import { Spacing } from '@/constants/myntra-theme';
+import { useTheme } from '@/context/ThemeContext';
+import { ThemeTokens } from '@/constants/theme';
 import { storeService } from '@/services/store-service';
 import {
   Order,
@@ -79,8 +81,11 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
   const [activeTab, setActiveTab] = useState<OrderFilterTab>('all');
   const [dateRange, setDateRange] = useState<OrderDateRange>('all');
   const [sortBy, setSortBy] = useState<OrderSortBy>('date_desc');
+  const [paymentMethod, setPaymentMethod] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFiltersBar, setShowFiltersBar] = useState(false);
+  const { colors, isDark } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   // Selected Order for expanded details / tracking
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
@@ -128,7 +133,8 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
       tab = activeTab,
       range = dateRange,
       sort = sortBy,
-      query = searchQuery
+      query = searchQuery,
+      pm = paymentMethod
     ) => {
       if (pageToLoad === 1) {
         if (isPullRefresh) {
@@ -146,6 +152,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
           page: pageToLoad,
           limit: 8,
           status: tab,
+          paymentMethod: pm !== 'all' ? pm : undefined,
           sortBy: sort,
           dateRange: range,
           search: query.trim() || undefined,
@@ -174,7 +181,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
         setIsLoadingMore(false);
       }
     },
-    [activeTab, dateRange, sortBy, searchQuery, showFeedback]
+    [activeTab, dateRange, paymentMethod, sortBy, searchQuery, showFeedback]
   );
 
   // Reset modal state when visible changes
@@ -195,9 +202,9 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
   useEffect(() => {
     if (visible) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchOrders(1, false, activeTab, dateRange, sortBy, searchQuery);
+      fetchOrders(1, false, activeTab, dateRange, sortBy, searchQuery, paymentMethod);
     }
-  }, [visible, activeTab, dateRange, sortBy, searchQuery, fetchOrders]);
+  }, [visible, activeTab, dateRange, paymentMethod, sortBy, searchQuery, fetchOrders]);
 
   // Support opening initialOrderId if specified
   const [prevInitialOrderId, setPrevInitialOrderId] = useState(initialOrderId);
@@ -608,7 +615,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                   style={styles.detailsBackBtn}
                   activeOpacity={0.7}
                   accessibilityLabel="Back to orders">
-                  <Ionicons name="arrow-back" size={22} color={MyntraColors.text} />
+                  <Ionicons name="arrow-back" size={22} color={colors.text} />
                 </TouchableOpacity>
 
                 <View style={styles.detailsHeaderCenter}>
@@ -621,7 +628,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                   style={styles.detailsBackBtn}
                   activeOpacity={0.7}
                   accessibilityLabel="Close orders">
-                  <Ionicons name="close" size={22} color={MyntraColors.text} />
+                  <Ionicons name="close" size={22} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -718,7 +725,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                           activeOpacity={0.8}>
                           {isDownloadingInvoiceId === detailsModalOrder.id ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <ActivityIndicator size="small" color={MyntraColors.primary} />
+                              <ActivityIndicator size="small" color={colors.primary} />
                               <Text style={styles.invoiceBtnTopText}>
                                 {invoiceDownloadProgress[detailsModalOrder.id] !== undefined
                                   ? `DOWNLOADING (${invoiceDownloadProgress[detailsModalOrder.id]}%)...`
@@ -727,7 +734,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                             </View>
                           ) : (
                             <>
-                              <Ionicons name="document-text-outline" size={15} color={MyntraColors.primary} />
+                              <Ionicons name="document-text-outline" size={15} color={colors.primary} />
                               <Text style={styles.invoiceBtnTopText}>DOWNLOAD TAX INVOICE (PDF)</Text>
                             </>
                           )}
@@ -741,7 +748,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                 {detailsModalOrder.trackingSteps && detailsModalOrder.trackingSteps.length > 0 && (
                   <View style={styles.detailSectionCard}>
                     <View style={styles.sectionHeaderRow}>
-                      <Ionicons name="git-commit-outline" size={17} color={MyntraColors.primary} />
+                      <Ionicons name="git-commit-outline" size={17} color={colors.primary} />
                       <Text style={styles.sectionHeaderTitle}>SHIPMENT TRACKING</Text>
                     </View>
 
@@ -794,7 +801,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                 {/* 3. Items Ordered Card with Persisted Snapshots */}
                 <View style={styles.detailSectionCard}>
                   <View style={styles.sectionHeaderRow}>
-                    <Ionicons name="bag-check-outline" size={17} color={MyntraColors.primary} />
+                    <Ionicons name="bag-check-outline" size={17} color={colors.primary} />
                     <Text style={styles.sectionHeaderTitle}>
                       ITEMS ORDERED ({detailsModalOrder.items.length})
                     </Text>
@@ -865,7 +872,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                 {/* 4. Delivery Address */}
                 <View style={styles.detailSectionCard}>
                   <View style={styles.sectionHeaderRow}>
-                    <Ionicons name="location-outline" size={17} color={MyntraColors.primary} />
+                    <Ionicons name="location-outline" size={17} color={colors.primary} />
                     <Text style={styles.sectionHeaderTitle}>DELIVERY ADDRESS</Text>
                   </View>
                   <Text style={styles.detailAddressFull}>
@@ -876,7 +883,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                 {/* 5. Price Breakdown Card */}
                 <View style={styles.detailSectionCard}>
                   <View style={styles.sectionHeaderRow}>
-                    <Ionicons name="receipt-outline" size={17} color={MyntraColors.primary} />
+                    <Ionicons name="receipt-outline" size={17} color={colors.primary} />
                     <Text style={styles.sectionHeaderTitle}>PRICE DETAILS</Text>
                   </View>
 
@@ -936,7 +943,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                 {/* 6. Payment Method & Status Card */}
                 <View style={styles.detailSectionCard}>
                   <View style={styles.sectionHeaderRow}>
-                    <Ionicons name="card-outline" size={17} color={MyntraColors.primary} />
+                    <Ionicons name="card-outline" size={17} color={colors.primary} />
                     <Text style={styles.sectionHeaderTitle}>PAYMENT MODE & STATUS</Text>
                   </View>
 
@@ -949,7 +956,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                             : 'card-outline'
                         }
                         size={18}
-                        color={MyntraColors.text}
+                        color={colors.text}
                       />
                       <Text style={styles.paymentMethodTitle}>
                         {detailsModalOrder.paymentMethod}
@@ -999,7 +1006,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                         disabled={isRetryingPaymentId === detailsModalOrder.id}
                         style={{
                           marginTop: 12,
-                          backgroundColor: MyntraColors.primary,
+                          backgroundColor: colors.primary,
                           flexDirection: 'row',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1073,7 +1080,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     onPress={() => setDetailsModalOrder(null)}
                     style={styles.detailsBackToListBtn}
                     activeOpacity={0.8}>
-                    <Ionicons name="list-outline" size={18} color={MyntraColors.text} />
+                    <Ionicons name="list-outline" size={18} color={colors.text} />
                     <Text style={styles.detailsBackToListText}>BACK TO MY ORDERS</Text>
                   </TouchableOpacity>
                 </View>
@@ -1105,7 +1112,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     <Ionicons
                       name="options-outline"
                       size={20}
-                      color={showFiltersBar ? MyntraColors.primary : MyntraColors.text}
+                      color={showFiltersBar ? colors.primary : colors.text}
                     />
                   </TouchableOpacity>
 
@@ -1114,7 +1121,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     style={styles.headerIconBtn}
                     activeOpacity={0.7}
                     accessibilityLabel="Refresh orders">
-                    <Ionicons name="refresh-outline" size={20} color={MyntraColors.text} />
+                    <Ionicons name="refresh-outline" size={20} color={colors.text} />
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -1122,7 +1129,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     style={styles.headerIconBtn}
                     activeOpacity={0.7}
                     accessibilityLabel="Close orders">
-                    <Ionicons name="close" size={22} color={MyntraColors.text} />
+                    <Ionicons name="close" size={22} color={colors.text} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1195,17 +1202,17 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
               {/* 4. Search Bar */}
               <View style={styles.searchBarContainer}>
                 <View style={styles.searchInputWrap}>
-                  <Ionicons name="search-outline" size={16} color={MyntraColors.textMuted} />
+                  <Ionicons name="search-outline" size={16} color={colors.textMuted} />
                   <TextInput
                     style={styles.searchInput}
                     placeholder="Search by Order ID, Product, or Brand"
-                    placeholderTextColor={MyntraColors.textMuted}
+                    placeholderTextColor={colors.textMuted}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                   />
                   {searchQuery.length > 0 && (
                     <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
-                      <Ionicons name="close-circle" size={16} color={MyntraColors.textMuted} />
+                      <Ionicons name="close-circle" size={16} color={colors.textMuted} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1264,6 +1271,32 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     </ScrollView>
                   </View>
 
+                  {/* Payment Method Filter Chips */}
+                  <View style={styles.filterGroup}>
+                    <Text style={styles.filterGroupLabel}>PAYMENT METHOD:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+                      {(
+                        [
+                          { key: 'all', label: 'All Methods' },
+                          { key: 'upi', label: 'UPI' },
+                          { key: 'card', label: 'Cards' },
+                          { key: 'netbanking', label: 'Net Banking' },
+                          { key: 'cod', label: 'Cash on Delivery' },
+                        ] as const
+                      ).map((item) => (
+                        <TouchableOpacity
+                          key={item.key}
+                          onPress={() => setPaymentMethod(item.key)}
+                          style={[styles.chip, paymentMethod === item.key && styles.chipActive]}
+                          activeOpacity={0.7}>
+                          <Text style={[styles.chipText, paymentMethod === item.key && styles.chipTextActive]}>
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+
                   {/* Sorting Chips */}
                   <View style={styles.filterGroup}>
                     <Text style={styles.filterGroupLabel}>SORT BY:</Text>
@@ -1294,7 +1327,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
               {/* 7. Main Content: Loading, Error, Empty, or Orders List */}
               {isLoading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={MyntraColors.primary} />
+                  <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={styles.loadingText}>Fetching orders from server...</Text>
                 </View>
               ) : loadError ? (
@@ -1312,7 +1345,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
               ) : orders.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <View style={styles.emptyIconCircle}>
-                    <Ionicons name="cube-outline" size={44} color={MyntraColors.primary} />
+                    <Ionicons name="cube-outline" size={44} color={colors.primary} />
                   </View>
                   <Text style={styles.emptyTitle}>
                     {activeTab === 'all' && !searchQuery
@@ -1356,7 +1389,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     <RefreshControl
                       refreshing={isRefreshing}
                       onRefresh={() => fetchOrders(1, true)}
-                      colors={[MyntraColors.primary]}
+                      colors={[colors.primary]}
                     />
                   }>
                   {orders.map((order) => {
@@ -1416,10 +1449,10 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                             size={15}
                             color={
                               order.status === 'Delivered'
-                                ? MyntraColors.ratingGreen
+                                ? colors.ratingGreen
                                 : order.status === 'Cancelled'
                                 ? '#dc2626'
-                                : MyntraColors.primary
+                                : colors.primary
                             }
                           />
                           <Text style={styles.deliveryEstimateText}>
@@ -1497,7 +1530,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                                     : 'card-outline'
                                 }
                                 size={14}
-                                color={MyntraColors.textSecondary}
+                                color={colors.textSecondary}
                               />
                               <Text style={styles.paymentMethodText} numberOfLines={1}>
                                 {order.paymentMethod}
@@ -1598,18 +1631,18 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                                 disabled={isRetryingPaymentId === order.id}
                                 style={[
                                   styles.actionBtnOutline,
-                                  { backgroundColor: '#fff1f2', borderColor: MyntraColors.primary },
+                                  { backgroundColor: colors.primaryLight, borderColor: colors.primary },
                                 ]}
                                 activeOpacity={0.75}>
                                 {isRetryingPaymentId === order.id ? (
-                                  <ActivityIndicator size="small" color={MyntraColors.primary} />
+                                  <ActivityIndicator size="small" color={colors.primary} />
                                 ) : (
                                   <>
-                                    <Ionicons name="card" size={12} color={MyntraColors.primary} />
+                                    <Ionicons name="card" size={12} color={colors.primary} />
                                     <Text
                                       style={[
                                         styles.actionBtnOutlineText,
-                                        { color: MyntraColors.primary, fontWeight: '800' },
+                                        { color: colors.primary, fontWeight: '800' },
                                       ]}>
                                       PAY NOW
                                     </Text>
@@ -1623,7 +1656,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                             onPress={() => setDetailsModalOrder(order)}
                             style={styles.actionBtnOutline}
                             activeOpacity={0.75}>
-                            <Ionicons name="receipt-outline" size={13} color={MyntraColors.text} />
+                            <Ionicons name="receipt-outline" size={13} color={colors.text} />
                             <Text style={styles.actionBtnOutlineText}>DETAILS</Text>
                           </TouchableOpacity>
 
@@ -1635,11 +1668,11 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                             activeOpacity={0.75}>
                             {isDownloadingInvoiceId === order.id ? (
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                <ActivityIndicator size="small" color={MyntraColors.primary} />
+                                <ActivityIndicator size="small" color={colors.primary} />
                                 <Text
                                   style={[
                                     styles.actionBtnOutlineText,
-                                    { color: MyntraColors.primary, fontSize: 10 },
+                                    { color: colors.primary, fontSize: 10 },
                                   ]}>
                                   {invoiceDownloadProgress[order.id] !== undefined
                                     ? `${invoiceDownloadProgress[order.id]}%`
@@ -1648,8 +1681,8 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                               </View>
                             ) : (
                               <>
-                                <Ionicons name="document-outline" size={13} color={MyntraColors.primary} />
-                                <Text style={[styles.actionBtnOutlineText, { color: MyntraColors.primary }]}>
+                                <Ionicons name="document-outline" size={13} color={colors.primary} />
+                                <Text style={[styles.actionBtnOutlineText, { color: colors.primary }]}>
                                   INVOICE
                                 </Text>
                               </>
@@ -1683,7 +1716,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                             <Ionicons
                               name="location-outline"
                               size={13}
-                              color={isExpanded ? MyntraColors.primary : MyntraColors.text}
+                              color={isExpanded ? colors.primary : colors.text}
                             />
                             <Text
                               style={[
@@ -1730,11 +1763,11 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                         style={styles.loadMoreBtn}
                         activeOpacity={0.8}>
                         {isLoadingMore ? (
-                          <ActivityIndicator size="small" color={MyntraColors.primary} />
+                          <ActivityIndicator size="small" color={colors.primary} />
                         ) : (
                           <>
                             <Text style={styles.loadMoreText}>LOAD MORE ORDERS</Text>
-                            <Ionicons name="chevron-down" size={16} color={MyntraColors.primary} />
+                            <Ionicons name="chevron-down" size={16} color={colors.primary} />
                           </>
                         )}
                       </TouchableOpacity>
@@ -1763,7 +1796,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     onPress={() => setCancelOrderTarget(null)}
                     style={styles.subCloseBtn}
                     activeOpacity={0.7}>
-                    <Ionicons name="close" size={20} color={MyntraColors.text} />
+                    <Ionicons name="close" size={20} color={colors.text} />
                   </TouchableOpacity>
                 </View>
 
@@ -1783,7 +1816,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                         <Ionicons
                           name={isSel ? 'radio-button-on' : 'radio-button-off'}
                           size={17}
-                          color={isSel ? MyntraColors.primary : MyntraColors.textMuted}
+                          color={isSel ? colors.primary : colors.textMuted}
                         />
                         <Text
                           style={[
@@ -1835,7 +1868,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     onPress={() => setReturnOrderTarget(null)}
                     style={styles.subCloseBtn}
                     activeOpacity={0.7}>
-                    <Ionicons name="close" size={20} color={MyntraColors.text} />
+                    <Ionicons name="close" size={20} color={colors.text} />
                   </TouchableOpacity>
                 </View>
 
@@ -1914,7 +1947,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                         <Ionicons
                           name={isSel ? 'radio-button-on' : 'radio-button-off'}
                           size={17}
-                          color={isSel ? MyntraColors.primary : MyntraColors.textMuted}
+                          color={isSel ? colors.primary : colors.textMuted}
                         />
                         <Text
                           style={[
@@ -1958,7 +1991,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeTokens, isDark: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -1969,7 +2002,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 580 : undefined,
     height: Platform.OS === 'web' ? '95%' : '96%',
-    backgroundColor: '#f5f5f7',
+    backgroundColor: colors.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
@@ -1981,9 +2014,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingVertical: 14,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
+    borderBottomColor: colors.border,
   },
   headerLeft: {
     gap: 2,
@@ -1991,12 +2024,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.8,
   },
   orderCount: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   headerActions: {
@@ -2012,7 +2045,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerIconBtnActive: {
-    backgroundColor: '#fff0f3',
+    backgroundColor: colors.primaryLight,
   },
   // Feedback Banner
   feedbackBanner: {
@@ -2024,11 +2057,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   feedbackBannerSuccess: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: isDark ? '#064e3b' : '#f0fdf4',
     borderBottomColor: '#bbf7d0',
   },
   feedbackBannerError: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: isDark ? '#450a0a' : '#fef2f2',
     borderBottomColor: '#fecaca',
   },
   feedbackBannerText: {
@@ -2044,7 +2077,7 @@ const styles = StyleSheet.create({
   },
   // Reorder Result Banner
   reorderResultBanner: {
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDark ? '#064e3b' : '#ecfdf5',
     borderBottomWidth: 1,
     borderBottomColor: '#a7f3d0',
     padding: 12,
@@ -2083,16 +2116,16 @@ const styles = StyleSheet.create({
   },
   // Search Bar
   searchBarContainer: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
+    borderBottomColor: colors.border,
   },
   searchInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f7',
+    backgroundColor: colors.background,
     borderRadius: 8,
     paddingHorizontal: 10,
     height: 38,
@@ -2101,15 +2134,15 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 12.5,
-    color: MyntraColors.text,
+    color: colors.text,
   },
   // Filter Tabs Bar
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#eaeaee',
+    borderBottomColor: colors.border,
   },
   tabBtn: {
     paddingVertical: 11,
@@ -2118,20 +2151,20 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabBtnActive: {
-    borderBottomColor: MyntraColors.primary,
+    borderBottomColor: colors.primary,
   },
   tabBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   tabBtnTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   // Extra Filters (Collapsible)
   extraFiltersStrip: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
     borderBottomWidth: 1,
@@ -2146,7 +2179,7 @@ const styles = StyleSheet.create({
   filterGroupLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     width: 80,
   },
   chipsScroll: {
@@ -2159,19 +2192,19 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#f2f2f5',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   chipActive: {
-    backgroundColor: '#fff0f3',
-    borderColor: MyntraColors.primary,
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
   },
   chipText: {
     fontSize: 10.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   chipTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   // Status states
@@ -2184,7 +2217,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 12.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   errorContainer: {
@@ -2201,12 +2234,12 @@ const styles = StyleSheet.create({
   },
   errorSub: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   retryBtn: {
     marginTop: 12,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 22,
     paddingVertical: 10,
     borderRadius: 6,
@@ -2227,7 +2260,7 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: '#fff0f3',
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
@@ -2235,19 +2268,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   emptySub: {
     fontSize: 11.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     maxWidth: 280,
     lineHeight: 17,
   },
   startShoppingBtn: {
     marginTop: 14,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 11,
     borderRadius: 6,
@@ -2267,10 +2300,10 @@ const styles = StyleSheet.create({
   },
   // Order Card in List
   orderCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e8e8ec',
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   orderTopBar: {
@@ -2294,11 +2327,11 @@ const styles = StyleSheet.create({
   orderIdText: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   orderDateText: {
     fontSize: 10.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -2326,7 +2359,7 @@ const styles = StyleSheet.create({
   deliveryEstimateText: {
     fontSize: 11,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   itemsContainer: {
     padding: 12,
@@ -2341,7 +2374,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 64,
     borderRadius: 4,
-    backgroundColor: '#f0f0f3',
+    backgroundColor: colors.backgroundElement,
   },
   orderItemInfo: {
     flex: 1,
@@ -2349,11 +2382,11 @@ const styles = StyleSheet.create({
   orderItemBrand: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   orderItemName: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   orderItemMetaRow: {
@@ -2363,16 +2396,16 @@ const styles = StyleSheet.create({
   },
   orderItemMeta: {
     fontSize: 10.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
   },
   orderItemMetaBold: {
-    color: MyntraColors.text,
+    color: colors.text,
     fontWeight: '700',
   },
   orderItemPrice: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     marginTop: 2,
   },
   orderFinancialRow: {
@@ -2387,13 +2420,13 @@ const styles = StyleSheet.create({
   },
   financialLabel: {
     fontSize: 10,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '600',
   },
   financialAmount: {
     fontSize: 13,
     fontWeight: '900',
-    color: MyntraColors.text,
+    color: colors.text,
     marginTop: 1,
   },
   paymentMethodCol: {
@@ -2408,7 +2441,7 @@ const styles = StyleSheet.create({
   },
   paymentMethodText: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   paymentStatusBadge: {
@@ -2436,12 +2469,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f2f2f4',
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   timelineHeader: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.5,
     marginBottom: 8,
   },
@@ -2462,17 +2495,17 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     borderWidth: 2,
     borderColor: '#c0c2cc',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   timelineDotDone: {
-    borderColor: MyntraColors.ratingGreen,
-    backgroundColor: MyntraColors.ratingGreen,
+    borderColor: colors.ratingGreen,
+    backgroundColor: colors.ratingGreen,
   },
   timelineDotActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff',
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
   },
   timelineLine: {
     width: 2,
@@ -2481,7 +2514,7 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   timelineLineDone: {
-    backgroundColor: MyntraColors.ratingGreen,
+    backgroundColor: colors.ratingGreen,
   },
   timelineTextCol: {
     flex: 1,
@@ -2491,15 +2524,15 @@ const styles = StyleSheet.create({
   timelineTitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   timelineTitleDone: {
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   timelineDate: {
     fontSize: 10,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     marginTop: 1,
   },
   // Action Bar on List Item
@@ -2510,7 +2543,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f3',
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     flexWrap: 'wrap',
   },
   actionBtnOutline: {
@@ -2522,19 +2555,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#d2d3da',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   actionBtnOutlineActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff4f6',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   actionBtnOutlineText: {
     fontSize: 10,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   actionBtnOutlineTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   actionBtnReorder: {
     flexDirection: 'row',
@@ -2557,7 +2590,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#fca5a5',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     marginLeft: 'auto',
   },
   actionBtnDangerText: {
@@ -2569,7 +2602,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     marginLeft: 'auto',
   },
   actionBtnPrimaryText: {
@@ -2587,9 +2620,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: MyntraColors.primary,
+    borderColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -2597,12 +2630,12 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
     letterSpacing: 0.5,
   },
   paginationSummary: {
     fontSize: 11,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '600',
   },
 
@@ -2611,7 +2644,7 @@ const styles = StyleSheet.create({
   // ==============================================================
   detailsContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: colors.background,
   },
   detailsHeader: {
     flexDirection: 'row',
@@ -2619,9 +2652,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingVertical: 12,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
+    borderBottomColor: colors.border,
   },
   detailsBackBtn: {
     width: 36,
@@ -2636,13 +2669,13 @@ const styles = StyleSheet.create({
   detailsHeaderTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.8,
   },
   detailsHeaderId: {
     fontSize: 11,
     fontWeight: '700',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   detailsScrollContent: {
@@ -2651,11 +2684,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   detailStatusCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e8e8ec',
+    borderColor: colors.border,
     gap: 6,
   },
   detailStatusTopRow: {
@@ -2666,17 +2699,17 @@ const styles = StyleSheet.create({
   },
   detailOrderDate: {
     fontSize: 11,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '600',
   },
   detailDeliveryHeadline: {
     fontSize: 14,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   detailDeliverySub: {
     fontSize: 11.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 16,
   },
   invoiceCtaRow: {
@@ -2689,7 +2722,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#fff0f3',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
@@ -2698,15 +2731,15 @@ const styles = StyleSheet.create({
   invoiceBtnTopText: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
     letterSpacing: 0.5,
   },
   detailSectionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e8e8ec',
+    borderColor: colors.border,
     gap: 10,
   },
   sectionHeaderRow: {
@@ -2714,13 +2747,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f4',
+    borderBottomColor: colors.border,
     paddingBottom: 8,
   },
   sectionHeaderTitle: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.5,
   },
   // Stepper in details
@@ -2741,24 +2774,24 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#d1d5db',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepperDotCompleted: {
-    borderColor: MyntraColors.ratingGreen,
-    backgroundColor: MyntraColors.ratingGreen,
+    borderColor: colors.ratingGreen,
+    backgroundColor: colors.ratingGreen,
   },
   stepperDotActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff',
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
   },
   stepperDotInnerActive: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
   },
   stepperLine: {
     width: 2,
@@ -2767,7 +2800,7 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   stepperLineCompleted: {
-    backgroundColor: MyntraColors.ratingGreen,
+    backgroundColor: colors.ratingGreen,
   },
   stepperInfoCol: {
     flex: 1,
@@ -2777,19 +2810,19 @@ const styles = StyleSheet.create({
   stepperTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   stepperTitleCompleted: {
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   stepperTitleActive: {
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   stepperDate: {
     fontSize: 10.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   // Items in details
@@ -2807,7 +2840,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 78,
     borderRadius: 6,
-    backgroundColor: '#f0f0f3',
+    backgroundColor: colors.backgroundElement,
   },
   detailProductInfo: {
     flex: 1,
@@ -2816,20 +2849,20 @@ const styles = StyleSheet.create({
   detailProductBrand: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   detailProductName: {
     fontSize: 11.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   detailSellerText: {
     fontSize: 10.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   detailSellerBold: {
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   detailMetaPillsRow: {
@@ -2840,19 +2873,19 @@ const styles = StyleSheet.create({
   },
   metaPill: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.backgroundElement,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   metaPillLabel: {
     fontSize: 10,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
   },
   metaPillVal: {
     fontSize: 10,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   detailPriceRow: {
     flexDirection: 'row',
@@ -2863,17 +2896,17 @@ const styles = StyleSheet.create({
   detailItemFinalPrice: {
     fontSize: 13,
     fontWeight: '900',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   detailItemOriginalPrice: {
     fontSize: 11,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
   // Address in details
   detailAddressFull: {
     fontSize: 12,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   // Price breakdown in details
@@ -2885,21 +2918,21 @@ const styles = StyleSheet.create({
   },
   priceRowLabel: {
     fontSize: 11.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   priceRowVal: {
     fontSize: 11.5,
     fontWeight: '600',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   priceRowFree: {
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
     fontWeight: '700',
   },
   priceRowDiscount: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
   },
   couponTagRow: {
     flexDirection: 'row',
@@ -2907,7 +2940,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   appliedCouponPill: {
-    backgroundColor: '#fff0f3',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -2915,27 +2948,27 @@ const styles = StyleSheet.create({
   appliedCouponPillText: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   priceRowTotal: {
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
     paddingTop: 8,
     marginTop: 6,
   },
   priceTotalLabel: {
     fontSize: 12.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   priceTotalVal: {
     fontSize: 14,
     fontWeight: '900',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   taxInclusiveNote: {
     fontSize: 10,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     fontStyle: 'italic',
     marginTop: 6,
   },
@@ -2953,7 +2986,7 @@ const styles = StyleSheet.create({
   paymentMethodTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   paymentStatusPill: {
     paddingHorizontal: 8,
@@ -2961,7 +2994,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   paymentStatusPillPaid: {
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDark ? '#064e3b' : '#ecfdf5',
   },
   paymentStatusPillRefunded: {
     backgroundColor: '#faf5ff',
@@ -3008,7 +3041,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: '#fca5a5',
     paddingVertical: 12,
@@ -3025,7 +3058,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 8,
   },
@@ -3040,7 +3073,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: '#d2d3da',
     paddingVertical: 11,
@@ -3049,7 +3082,7 @@ const styles = StyleSheet.create({
   detailsBackToListText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
 
   // ==============================================================
@@ -3066,7 +3099,7 @@ const styles = StyleSheet.create({
   subCard: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 16,
     shadowColor: '#000',
@@ -3081,17 +3114,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
+    borderBottomColor: colors.border,
     paddingBottom: 10,
   },
   subTitle: {
     fontSize: 14.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   subOrderId: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -3104,7 +3137,7 @@ const styles = StyleSheet.create({
   },
   reasonPromptText: {
     fontSize: 11.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   reasonsList: {
@@ -3118,21 +3151,21 @@ const styles = StyleSheet.create({
     padding: 9,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   reasonOptionRowSelected: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff4f6',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   reasonOptionText: {
     fontSize: 11.5,
-    color: MyntraColors.text,
+    color: colors.text,
     flex: 1,
   },
   reasonOptionTextSelected: {
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   subActionsRow: {
     flexDirection: 'row',
@@ -3143,15 +3176,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   subCancelBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   subDangerBtn: {
     flex: 1.4,
@@ -3171,7 +3204,7 @@ const styles = StyleSheet.create({
     flex: 1.4,
     paddingVertical: 10,
     borderRadius: 6,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3183,7 +3216,7 @@ const styles = StyleSheet.create({
   },
   returnTypeToggleRow: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.backgroundElement,
     borderRadius: 6,
     padding: 3,
     marginBottom: 10,
@@ -3195,7 +3228,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   returnTypeBtnActive: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -3205,10 +3238,10 @@ const styles = StyleSheet.create({
   returnTypeText: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   returnTypeTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   exchangeSizeContainer: {
@@ -3220,7 +3253,7 @@ const styles = StyleSheet.create({
   exchangeSizeLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
     marginBottom: 6,
   },
   exchangeSizeRow: {
@@ -3232,22 +3265,22 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   exchangeSizeChipActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff0f3',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   exchangeSizeChipText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   exchangeSizeChipTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
 });

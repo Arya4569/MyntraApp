@@ -243,12 +243,19 @@ const server = app.listen(5097, '127.0.0.1', async () => {
     console.log('15. Payment verification endpoint responds:', invalidVerifyRes.status ? 'PASS' : 'FAIL');
 
     // B: Valid payment verification creates payment notification
+    const crypto = require('crypto');
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'paxc1ynKdjucDgJujNz7GLB9';
+    const payId = `pay_${Date.now()}`;
+    const payBody = `${createdOrder.id}|${payId}`;
+    const paySig = crypto.createHmac('sha256', secret).update(payBody).digest('hex');
+
     const validVerifyRes = await request(
       '/api/payment/verify',
       'POST',
       {
         razorpay_order_id: createdOrder.id,
-        razorpay_payment_id: `pay_${Date.now()}`,
+        razorpay_payment_id: payId,
+        razorpay_signature: paySig,
         amount: 1499,
         userId: userA.id,
       },
@@ -271,9 +278,9 @@ const server = app.listen(5097, '127.0.0.1', async () => {
     );
     // Ensure userA has prod-2 in wishlist
     await request('/api/wishlist', 'POST', { productId: 'prod-2' }, tokenA);
-    const prod2Res = await request('/api/products/prod-2');
-    const currentPrice = prod2Res.data.product?.price || 899;
-    const dropTargetPrice = currentPrice > 300 ? currentPrice - 100 : 799;
+    // Reset price high first, then drop it to a unique lower price
+    await request('/api/products/prod-2/price', 'PATCH', { price: 2000 });
+    const dropTargetPrice = 1200 - Math.floor(Math.random() * 200);
 
     const priceDropRes = await request(
       '/api/products/prod-2/price',

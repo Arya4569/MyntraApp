@@ -153,11 +153,15 @@ const server = app.listen(5098, '127.0.0.1', async () => {
     console.log('16. POST /api/payment/create-order (₹499):', isCreateOrderPass ? 'PASS' : 'FAIL');
 
     // 17. Razorpay Verify: POST /api/payment/verify
+    const crypto = require('crypto');
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'paxc1ynKdjucDgJujNz7GLB9';
+    const payBody = `${createOrderRes.data.orderId}|pay_test_123456`;
+    const paySig = crypto.createHmac('sha256', secret).update(payBody).digest('hex');
     const verifyPayRes = await request('/api/payment/verify', 'POST', {
       razorpay_order_id: createOrderRes.data.orderId,
       razorpay_payment_id: 'pay_test_123456',
-      razorpay_signature: 'test_sig',
-    });
+      razorpay_signature: paySig,
+    }, token);
     const isVerifyPass = verifyPayRes.status === 200 && verifyPayRes.data.verified === true;
     console.log('17. POST /api/payment/verify:', isVerifyPass ? 'PASS' : 'FAIL');
 

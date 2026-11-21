@@ -26,6 +26,9 @@ const getTransporter = () => {
         user: emailUser,
         pass: emailPass,
       },
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 4000,
     });
   }
 
@@ -146,16 +149,13 @@ exports.sendOtpEmail = async ({ to, otp, name }) => {
     return sendDirectSmtp({ to: cleanEmail, otp: cleanOtp, name: userName });
   }
 
-  // 2. If running on cloud (where SMTP ports 465/587 are blocked by Render free tier), relay over HTTPS port 443
-  const relayUrl = (
-    process.env.EMAIL_RELAY_URL ||
-    'https://marcus-what-valentine-learners.trycloudflare.com/api/auth/relay-email'
-  ).trim();
+  // 2. If a valid external HTTPS relay is explicitly provided (and not an expired trycloudflare url)
+  const relayUrl = (process.env.EMAIL_RELAY_URL || '').trim();
 
-  if (relayUrl) {
+  if (relayUrl && !relayUrl.includes('trycloudflare.com') && !relayUrl.includes('placeholder')) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const response = await fetch(relayUrl, {
         method: 'POST',
@@ -177,7 +177,7 @@ exports.sendOtpEmail = async ({ to, otp, name }) => {
     }
   }
 
-  // 3. Fall back to direct SMTP
+  // 3. Dispatch directly via SMTP with configured 4s socket timeout
   return sendDirectSmtp({ to: cleanEmail, otp: cleanOtp, name: userName });
 };
 

@@ -122,6 +122,26 @@ class RealtimeService extends EventEmitter {
       timestamp: new Date().toISOString(),
     });
   }
+
+  /**
+   * Convenience: Broadcast browsing-history updates to all authenticated sessions of the same user
+   */
+  notifyRecentlyViewedUpdate(userId, data) {
+    this.sendToUser(userId, 'recently_viewed_update', {
+      ...data,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Convenience: Broadcast cart and saved-for-later updates to all sessions of the same user
+   */
+  notifyCartUpdate(userId, data = {}) {
+    this.sendToUser(userId, 'cart_update', {
+      ...data,
+      timestamp: new Date().toISOString(),
+    });
+  }
 }
 
 const realtimeService = new RealtimeService();

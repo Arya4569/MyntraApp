@@ -1,0 +1,11 @@
+{
+  "abandoned_carts": {
+    "lastRun": "2026-11-21T03:20:47.242Z",
+    "lastCompleted": "2026-11-21T03:20:48.060Z",
+    "executionCount": 14,
+    "lastResult": {
+      "remindedCount": 0,
+      "users": []
+    }
+  }
+}

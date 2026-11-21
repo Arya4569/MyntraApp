@@ -181,6 +181,7 @@ export interface OrderFilterOptions {
   page?: number;
   limit?: number;
   status?: string;
+  paymentMethod?: string;
   sortBy?: 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc';
   search?: string;
   dateRange?: 'all' | 'last30days' | 'last6months' | 'thisyear';

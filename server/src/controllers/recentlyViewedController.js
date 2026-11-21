@@ -1,5 +1,6 @@
 const RecentlyViewed = require('../models/RecentlyViewed');
 const RecommendationService = require('../services/recommendationService');
+const realtimeService = require('../services/realtimeService');
 
 exports.getRecentlyViewed = (req, res) => {
   try {
@@ -43,6 +44,13 @@ exports.addItem = (req, res) => {
 
     RecommendationService.clearCache(userId);
 
+    // Broadcast browsing-history update to all connected sessions for this user
+    try {
+      realtimeService.notifyRecentlyViewedUpdate(userId, result);
+    } catch (rtErr) {
+      console.warn('Realtime notifyRecentlyViewedUpdate error:', rtErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Product tracked in recently viewed.',
@@ -74,6 +82,13 @@ exports.syncBatch = (req, res) => {
     const result = RecentlyViewed.merge(userId, productIds);
     RecommendationService.clearCache(userId);
 
+    // Broadcast synchronized browsing-history update to all connected sessions
+    try {
+      realtimeService.notifyRecentlyViewedUpdate(userId, result);
+    } catch (rtErr) {
+      console.warn('Realtime notifyRecentlyViewedUpdate error:', rtErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Recently viewed products synchronized successfully.',
@@ -95,6 +110,14 @@ exports.clear = (req, res) => {
     const userId = req.user.id;
     const result = RecentlyViewed.clear(userId);
     RecommendationService.clearCache(userId);
+
+    // Broadcast clear event to all sessions
+    try {
+      realtimeService.notifyRecentlyViewedUpdate(userId, result);
+    } catch (rtErr) {
+      console.warn('Realtime notifyRecentlyViewedUpdate error:', rtErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Recently viewed products cleared successfully.',

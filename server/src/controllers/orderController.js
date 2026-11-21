@@ -17,6 +17,8 @@ exports.getOrders = async (req, res) => {
       page = 1,
       limit = 10,
       status = 'all',
+      paymentMethod,
+      payment_method,
       sortBy = 'date_desc',
       search = '',
       startDate,
@@ -24,11 +26,14 @@ exports.getOrders = async (req, res) => {
       dateRange,
     } = req.query;
 
+    const resolvedPaymentMethod = paymentMethod || payment_method || undefined;
+
     const result = Order.findAll({
       userId,
       page,
       limit,
       status,
+      paymentMethod: resolvedPaymentMethod,
       sortBy,
       search,
       startDate,
@@ -42,6 +47,7 @@ exports.getOrders = async (req, res) => {
       pagination: result.pagination,
       filters: {
         status,
+        paymentMethod: resolvedPaymentMethod || null,
         sortBy,
         search,
         dateRange: dateRange || null,

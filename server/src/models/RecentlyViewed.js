@@ -1,7 +1,7 @@
 const db = require('../db');
 const Product = require('./Product');
 
-const MAX_RECENTLY_VIEWED = 50;
+const MAX_RECENTLY_VIEWED = 20;
 
 class RecentlyViewed {
   static getRecentlyViewedIds(userId) {

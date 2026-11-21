@@ -19,6 +19,8 @@ web-build/
 
 # Server data
 server/data/db.json.tmp
+server/data/*.sqlite-wal
+server/data/*.sqlite-shm
 server/.env
 
 # Logs

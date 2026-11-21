@@ -11,7 +11,6 @@ import {
   View,
 } from 'react-native';
 
-import { MyntraColors } from '@/constants/myntra-theme';
 import { useTheme } from '@/hooks/use-theme';
 import { pushNotificationService } from '@/services/push-notification-service';
 import { storeService } from '@/services/store-service';
@@ -340,8 +339,8 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
       {/* Section Header */}
       <View style={styles.headerRow}>
         <View style={styles.headerTitleRow}>
-          <View style={[styles.headerIconCircle, { backgroundColor: '#fff0f3' }]}>
-            <Ionicons name="notifications-outline" size={18} color={MyntraColors.primary} />
+          <View style={[styles.headerIconCircle, { backgroundColor: colors.primaryLight }]}>
+            <Ionicons name="notifications-outline" size={18} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -359,8 +358,8 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
         style={[
           styles.masterPushCard,
           {
-            backgroundColor: isDark ? colors.surfaceSecondary : '#f9f9fa',
-            borderColor: isPushEnabled ? (isDark ? '#333' : '#e6e6e6') : '#f0f0f0',
+            backgroundColor: colors.surfaceSecondary,
+            borderColor: isPushEnabled ? colors.cardBorder : colors.divider,
           },
         ]}>
         {/* Clickable Header Row: Tapping toggles Device Push */}
@@ -373,13 +372,13 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
             style={[
               styles.masterIconCircle,
               {
-                backgroundColor: isPushEnabled ? '#e6f9f3' : isDark ? '#2a2a2a' : '#f0f0f0',
+                backgroundColor: isPushEnabled ? (isDark ? 'rgba(3,166,133,0.2)' : '#e6f9f3') : colors.inputBackground,
               },
             ]}>
             <Ionicons
               name={isPushEnabled ? 'notifications' : 'notifications-off-outline'}
               size={20}
-              color={isPushEnabled ? '#03a685' : colors.textSecondary}
+              color={isPushEnabled ? colors.ratingGreen : colors.textSecondary}
             />
           </View>
 
@@ -399,19 +398,19 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
           {/* Action Button & Switch Combo for explicit, easy clicking */}
           <View style={styles.actionControlsWrap}>
             {isPushToggling ? (
-              <ActivityIndicator size="small" color={MyntraColors.primary} style={{ marginRight: 6 }} />
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 6 }} />
             ) : (
               <TouchableOpacity
                 style={[
                   styles.devicePushActionBtn,
                   isPushEnabled
                     ? {
-                        backgroundColor: isDark ? '#2d2d2d' : '#f0f0f0',
-                        borderColor: isDark ? '#444' : '#dcdcdc',
+                        backgroundColor: colors.inputBackground,
+                        borderColor: colors.cardBorder,
                       }
                     : {
-                        backgroundColor: MyntraColors.primary,
-                        borderColor: MyntraColors.primary,
+                        backgroundColor: colors.primary,
+                        borderColor: colors.primary,
                       },
                 ]}
                 onPress={() => handleMasterPushToggle(!isPushEnabled)}
@@ -419,12 +418,12 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
                 <Ionicons
                   name={isPushEnabled ? 'power-outline' : 'notifications-outline'}
                   size={12}
-                  color={isPushEnabled ? colors.textSecondary : '#ffffff'}
+                  color={isPushEnabled ? colors.textSecondary : colors.white}
                 />
                 <Text
                   style={[
                     styles.devicePushActionBtnText,
-                    { color: isPushEnabled ? colors.text : '#ffffff' },
+                    { color: isPushEnabled ? colors.text : colors.white },
                   ]}>
                   {isPushEnabled ? 'Turn OFF' : 'Turn ON'}
                 </Text>
@@ -435,9 +434,9 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
               value={isPushEnabled}
               onValueChange={handleMasterPushToggle}
               disabled={isLoading || isPushToggling}
-              trackColor={{ false: '#e0e0e0', true: '#ffc1cf' }}
-              thumbColor={isPushEnabled ? MyntraColors.primary : '#ffffff'}
-              ios_backgroundColor="#e0e0e0"
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
+              thumbColor={isPushEnabled ? colors.primary : colors.white}
+              ios_backgroundColor={colors.border}
             />
           </View>
         </TouchableOpacity>
@@ -449,8 +448,8 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
               styles.statusPill,
               {
                 backgroundColor: !isPushEnabled
-                  ? isDark ? '#333' : '#f0f0f0'
-                  : isDark ? '#063f33' : '#e6f9f3',
+                  ? colors.inputBackground
+                  : (isDark ? 'rgba(3,166,133,0.2)' : '#e6f9f3'),
               },
             ]}
             onPress={() => handleMasterPushToggle(!isPushEnabled)}
@@ -459,7 +458,7 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
               style={[
                 styles.statusDot,
                 {
-                  backgroundColor: !isPushEnabled ? '#888888' : '#03a685',
+                  backgroundColor: !isPushEnabled ? colors.textMuted : colors.ratingGreen,
                 },
               ]}
             />
@@ -467,7 +466,7 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
               style={[
                 styles.statusPillText,
                 {
-                  color: !isPushEnabled ? colors.textSecondary : '#03a685',
+                  color: !isPushEnabled ? colors.textSecondary : colors.ratingGreen,
                 },
               ]}>
               {!isPushEnabled ? '● Push Delivery Disabled' : '● Device Registered & Active'}
@@ -481,12 +480,12 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
               isTestAlertReady
                 ? {
                     borderColor: colors.primary,
-                    backgroundColor: isDark ? colors.surfaceElevated : '#fff0f3',
+                    backgroundColor: colors.primaryLight,
                     opacity: 1,
                   }
                 : {
-                    borderColor: isDark ? '#444' : '#e0e0e0',
-                    backgroundColor: isDark ? '#262626' : '#f5f5f5',
+                    borderColor: colors.border,
+                    backgroundColor: colors.inputBackground,
                     opacity: 0.6,
                   },
             ]}
@@ -520,17 +519,17 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
             styles.helperMsgBox,
             {
               backgroundColor: helper.isWarning
-                ? isDark ? '#382b0e' : '#fffbeb'
-                : isDark ? '#0e2d25' : '#f0fdf4',
+                ? (isDark ? 'rgba(245,158,11,0.15)' : '#fffbeb')
+                : (isDark ? 'rgba(3,166,133,0.15)' : '#f0fdf4'),
               borderColor: helper.isWarning
-                ? isDark ? '#6b510c' : '#fde68a'
-                : isDark ? '#14532d' : '#bbf7d0',
+                ? (isDark ? 'rgba(245,158,11,0.4)' : '#fde68a')
+                : (isDark ? 'rgba(3,166,133,0.4)' : '#bbf7d0'),
             },
           ]}>
           <Ionicons
             name={helper.isWarning ? 'alert-circle-outline' : 'checkmark-circle-outline'}
             size={14}
-            color={helper.isWarning ? '#d97706' : '#16a34a'}
+            color={helper.isWarning ? colors.discountOrange : colors.ratingGreen}
             style={{ marginTop: 1 }}
           />
           <Text
@@ -538,8 +537,8 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
               styles.helperMsgText,
               {
                 color: helper.isWarning
-                  ? isDark ? '#fef3c7' : '#92400e'
-                  : isDark ? '#dcfce7' : '#166534',
+                  ? (isDark ? '#fef3c7' : '#92400e')
+                  : (isDark ? '#dcfce7' : '#166534'),
               },
             ]}>
             {helper.text}
@@ -589,9 +588,9 @@ export const NotificationSettingsSection: React.FC<NotificationSettingsSectionPr
                 <Switch
                   value={isEnabled}
                   onValueChange={() => handleToggle(cat.key)}
-                  trackColor={{ false: '#e0e0e0', true: '#ffc1cf' }}
-                  thumbColor={isEnabled ? MyntraColors.primary : '#ffffff'}
-                  ios_backgroundColor="#e0e0e0"
+                  trackColor={{ false: colors.border, true: colors.primaryLight }}
+                  thumbColor={isEnabled ? colors.primary : colors.white}
+                  ios_backgroundColor={colors.border}
                 />
               </View>
             );

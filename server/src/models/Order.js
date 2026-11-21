@@ -41,6 +41,34 @@ class Order {
       }
     }
 
+    // 2.5 Filter by Payment Method
+    if (options.paymentMethod && options.paymentMethod !== 'all') {
+      const pmFilter = options.paymentMethod.trim().toLowerCase();
+      orders = orders.filter((o) => {
+        const orderPm = (o.paymentMethod || '').toLowerCase();
+        if (pmFilter === 'cod' || pmFilter === 'cash on delivery') {
+          return orderPm.includes('cod') || orderPm.includes('cash on delivery');
+        }
+        if (pmFilter === 'upi') {
+          return orderPm.includes('upi');
+        }
+        if (pmFilter === 'card') {
+          return (
+            orderPm.includes('card') ||
+            orderPm.includes('debit') ||
+            orderPm.includes('credit')
+          );
+        }
+        if (pmFilter === 'netbanking' || pmFilter === 'net banking') {
+          return orderPm.includes('netbanking') || orderPm.includes('net banking');
+        }
+        if (pmFilter === 'razorpay') {
+          return orderPm.includes('razorpay');
+        }
+        return orderPm.includes(pmFilter);
+      });
+    }
+
     // 3. Filter by Date Range
     if (options.startDate || options.endDate || options.dateRange) {
       let start = options.startDate ? new Date(options.startDate).getTime() : 0;

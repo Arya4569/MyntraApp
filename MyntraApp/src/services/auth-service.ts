@@ -460,10 +460,10 @@ class AuthService {
       };
     }
 
-    // Call backend real-time send-otp endpoint with a 5s fast timeout
+    // Call backend real-time send-otp endpoint with a 15s timeout
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch(`${getApiBaseUrl()}/auth/send-otp`, {
         method: 'POST',

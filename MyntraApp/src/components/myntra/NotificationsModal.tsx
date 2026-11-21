@@ -89,7 +89,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   const [unreadTotal, setUnreadTotal] = useState(0);
 
   const onUnreadCountChangeRef = React.useRef(onUnreadCountChange);
-  onUnreadCountChangeRef.current = onUnreadCountChange;
+  React.useEffect(() => {
+    onUnreadCountChangeRef.current = onUnreadCountChange;
+  }, [onUnreadCountChange]);
 
   // Load notifications from backend API
   const loadNotifications = useCallback(

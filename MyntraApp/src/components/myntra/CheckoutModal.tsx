@@ -14,7 +14,9 @@ import {
   View,
 } from 'react-native';
 
-import { MyntraColors, Spacing } from '@/constants/myntra-theme';
+import { Spacing } from '@/constants/myntra-theme';
+import { useTheme } from '@/context/ThemeContext';
+import { ThemeTokens } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { AVAILABLE_COUPONS } from '@/data/mock-data';
 import { storeService } from '@/services/store-service';
@@ -51,6 +53,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   embedded = false,
 }) => {
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   // 1. Saved Addresses & Selection State
   const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
@@ -561,7 +565,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             style={styles.backBtn}
             activeOpacity={0.7}
             accessibilityLabel="Back to bag">
-            <Ionicons name="arrow-back" size={22} color={MyntraColors.text} />
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <View>
             <Text style={styles.headerTitle}>CHECKOUT</Text>
@@ -675,7 +679,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             style={styles.sectionHeaderRow}
             activeOpacity={0.75}>
             <View style={styles.sectionTitleWithIcon}>
-              <Ionicons name="bag-handle-outline" size={17} color={MyntraColors.primary} />
+              <Ionicons name="bag-handle-outline" size={17} color={colors.primary} />
               <Text style={styles.sectionTitle}>
                 ORDER SUMMARY ({cartItems.length} {cartItems.length === 1 ? 'Item' : 'Items'})
               </Text>
@@ -687,14 +691,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <Ionicons
                 name={isItemsExpanded ? 'chevron-up' : 'chevron-down'}
                 size={16}
-                color={MyntraColors.textSecondary}
+                color={colors.textSecondary}
               />
             </View>
           </TouchableOpacity>
 
           {/* Delivery Promise Strip */}
           <View style={styles.deliveryEstimateCard}>
-            <Ionicons name="flash-outline" size={16} color={MyntraColors.primary} />
+            <Ionicons name="flash-outline" size={16} color={colors.primary} />
             <Text style={styles.deliveryEstimateText}>
               Estimated Delivery by <Text style={styles.boldText}>{deliveryDateString}</Text>
             </Text>
@@ -760,7 +764,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <View style={styles.sectionTitleWithIcon}>
-              <Ionicons name="location-outline" size={17} color={MyntraColors.primary} />
+              <Ionicons name="location-outline" size={17} color={colors.primary} />
               <Text style={styles.sectionTitle}>DELIVERY ADDRESS</Text>
             </View>
             {!showAddAddressForm && (
@@ -768,7 +772,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 onPress={handleStartAddNewAddress}
                 style={styles.addNewAddrBtn}
                 activeOpacity={0.7}>
-                <Ionicons name="add" size={14} color={MyntraColors.primary} />
+                <Ionicons name="add" size={14} color={colors.primary} />
                 <Text style={styles.actionLinkText}>ADD NEW</Text>
               </TouchableOpacity>
             )}
@@ -791,14 +795,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <TextInput
                 style={styles.formInput}
                 placeholder="Full Name *"
-                placeholderTextColor={MyntraColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={formName}
                 onChangeText={setFormName}
               />
               <TextInput
                 style={styles.formInput}
                 placeholder="10-Digit Mobile Number *"
-                placeholderTextColor={MyntraColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
                 maxLength={10}
                 value={formMobile}
@@ -809,7 +813,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <TextInput
                 style={styles.formInput}
                 placeholder="6-Digit PIN Code *"
-                placeholderTextColor={MyntraColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="number-pad"
                 maxLength={6}
                 value={formPincode}
@@ -818,7 +822,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <TextInput
                 style={[styles.formInput, styles.formInputArea]}
                 placeholder="Flat, House no., Building, Apartment, Street *"
-                placeholderTextColor={MyntraColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={2}
                 value={formAddress}
@@ -827,7 +831,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <TextInput
                 style={styles.formInput}
                 placeholder="Locality / Area / Landmark (Optional)"
-                placeholderTextColor={MyntraColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={formLocality}
                 onChangeText={setFormLocality}
               />
@@ -836,14 +840,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <TextInput
                   style={[styles.formInput, styles.formInputHalf]}
                   placeholder="City / District *"
-                  placeholderTextColor={MyntraColors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   value={formCity}
                   onChangeText={setFormCity}
                 />
                 <TextInput
                   style={[styles.formInput, styles.formInputHalf]}
                   placeholder="State *"
-                  placeholderTextColor={MyntraColors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   value={formState}
                   onChangeText={setFormState}
                 />
@@ -863,7 +867,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <Ionicons
                       name={t === 'Home' ? 'home-outline' : 'briefcase-outline'}
                       size={14}
-                      color={formType === t ? MyntraColors.primary : MyntraColors.textSecondary}
+                      color={formType === t ? colors.primary : colors.textSecondary}
                     />
                     <Text
                       style={[
@@ -883,7 +887,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <Ionicons
                   name={formIsDefault ? 'checkbox' : 'square-outline'}
                   size={18}
-                  color={formIsDefault ? MyntraColors.primary : MyntraColors.textMuted}
+                  color={formIsDefault ? colors.primary : colors.textMuted}
                 />
                 <Text style={styles.defaultCheckboxText}>Make this my default address</Text>
               </TouchableOpacity>
@@ -951,7 +955,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             onPress={() => handleStartEditAddress(addr)}
                             style={styles.editAddrBtn}
                             activeOpacity={0.7}>
-                            <Ionicons name="pencil" size={13} color={MyntraColors.primary} />
+                            <Ionicons name="pencil" size={13} color={colors.primary} />
                             <Text style={styles.editAddrBtnText}>EDIT</Text>
                           </TouchableOpacity>
                         </View>
@@ -980,7 +984,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <View style={styles.sectionTitleWithIcon}>
-              <Ionicons name="pricetag-outline" size={17} color={MyntraColors.primary} />
+              <Ionicons name="pricetag-outline" size={17} color={colors.primary} />
               <Text style={styles.sectionTitle}>COUPONS & OFFERS</Text>
             </View>
             {activeCouponObj && (
@@ -1012,7 +1016,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <TextInput
                   style={styles.couponTextInput}
                   placeholder="Enter Coupon Code"
-                  placeholderTextColor={MyntraColors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   autoCapitalize="characters"
                   value={customCouponInput}
                   onChangeText={setCustomCouponInput}
@@ -1045,7 +1049,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <Ionicons
                   name={showCouponsList ? 'chevron-up' : 'chevron-down'}
                   size={15}
-                  color={MyntraColors.primary}
+                  color={colors.primary}
                 />
               </TouchableOpacity>
 
@@ -1091,7 +1095,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
             <View style={styles.sectionTitleWithIcon}>
-              <Ionicons name="card-outline" size={17} color={MyntraColors.primary} />
+              <Ionicons name="card-outline" size={17} color={colors.primary} />
               <Text style={styles.sectionTitle}>PAYMENT OPTION</Text>
             </View>
           </View>
@@ -1166,7 +1170,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <View style={styles.paymentOptionInfo}>
                 <View style={styles.paymentOptionTitleRow}>
                   <Text style={styles.paymentOptionTitle}>Cash on Delivery (COD)</Text>
-                  <Ionicons name="cash-outline" size={20} color={MyntraColors.text} />
+                  <Ionicons name="cash-outline" size={20} color={colors.text} />
                 </View>
                 <Text style={styles.paymentOptionSub}>
                   Pay cash or scan QR upon delivery at your doorstep
@@ -1194,7 +1198,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <View style={styles.paymentOptionInfo}>
                 <View style={styles.paymentOptionTitleRow}>
                   <Text style={styles.paymentOptionTitle}>Instant UPI Payment</Text>
-                  <Ionicons name="phone-portrait-outline" size={18} color={MyntraColors.text} />
+                  <Ionicons name="phone-portrait-outline" size={18} color={colors.text} />
                 </View>
                 <Text style={styles.paymentOptionSub}>
                   Google Pay, PhonePe, Paytm or UPI ID
@@ -1235,7 +1239,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <TextInput
                           style={styles.customUpiInput}
                           placeholder="e.g. name@okhdfcbank"
-                          placeholderTextColor={MyntraColors.textMuted}
+                          placeholderTextColor={colors.textMuted}
                           autoCapitalize="none"
                           value={customUpiId}
                           onChangeText={(t) => {
@@ -1285,7 +1289,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <View style={styles.paymentOptionInfo}>
                 <View style={styles.paymentOptionTitleRow}>
                   <Text style={styles.paymentOptionTitle}>Credit / Debit Card</Text>
-                  <Ionicons name="card-outline" size={20} color={MyntraColors.text} />
+                  <Ionicons name="card-outline" size={20} color={colors.text} />
                 </View>
                 <Text style={styles.paymentOptionSub}>
                   Visa, MasterCard, RuPay & Diners Club
@@ -1296,7 +1300,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <TextInput
                       style={styles.cardInput}
                       placeholder="16-Digit Card Number *"
-                      placeholderTextColor={MyntraColors.textMuted}
+                      placeholderTextColor={colors.textMuted}
                       keyboardType="number-pad"
                       maxLength={19}
                       value={cardNumber}
@@ -1305,7 +1309,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <TextInput
                       style={styles.cardInput}
                       placeholder="Name on Card *"
-                      placeholderTextColor={MyntraColors.textMuted}
+                      placeholderTextColor={colors.textMuted}
                       value={cardHolder}
                       onChangeText={setCardHolder}
                     />
@@ -1313,7 +1317,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <TextInput
                         style={[styles.cardInput, styles.cardInputHalf]}
                         placeholder="Valid Thru (MM/YY) *"
-                        placeholderTextColor={MyntraColors.textMuted}
+                        placeholderTextColor={colors.textMuted}
                         keyboardType="number-pad"
                         maxLength={5}
                         value={cardExpiry}
@@ -1322,7 +1326,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <TextInput
                         style={[styles.cardInput, styles.cardInputHalf]}
                         placeholder="CVV (3 Digits) *"
-                        placeholderTextColor={MyntraColors.textMuted}
+                        placeholderTextColor={colors.textMuted}
                         keyboardType="number-pad"
                         maxLength={3}
                         secureTextEntry
@@ -1355,7 +1359,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <View style={styles.paymentOptionInfo}>
                 <View style={styles.paymentOptionTitleRow}>
                   <Text style={styles.paymentOptionTitle}>Net Banking</Text>
-                  <Ionicons name="business-outline" size={18} color={MyntraColors.text} />
+                  <Ionicons name="business-outline" size={18} color={colors.text} />
                 </View>
                 <Text style={styles.paymentOptionSub}>All major Indian retail banks</Text>
 
@@ -1443,17 +1447,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {/* Trust Badges Strip */}
         <View style={styles.trustBadgesRow}>
           <View style={styles.trustItem}>
-            <Ionicons name="shield-checkmark-outline" size={16} color={MyntraColors.primary} />
+            <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
             <Text style={styles.trustItemText}>100% SECURE</Text>
           </View>
           <View style={styles.trustDivider} />
           <View style={styles.trustItem}>
-            <Ionicons name="ribbon-outline" size={16} color={MyntraColors.primary} />
+            <Ionicons name="ribbon-outline" size={16} color={colors.primary} />
             <Text style={styles.trustItemText}>GENUINE PRODUCTS</Text>
           </View>
           <View style={styles.trustDivider} />
           <View style={styles.trustItem}>
-            <Ionicons name="repeat-outline" size={16} color={MyntraColors.primary} />
+            <Ionicons name="repeat-outline" size={16} color={colors.primary} />
             <Text style={styles.trustItemText}>EASY RETURNS</Text>
           </View>
         </View>
@@ -1577,7 +1581,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeTokens, isDark: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -1586,14 +1590,14 @@ const styles = StyleSheet.create({
   },
   embeddedOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     zIndex: 100,
   },
   sheetContainer: {
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 540 : undefined,
     height: Platform.OS === 'web' ? '96%' : '100%',
-    backgroundColor: '#f5f5f7',
+    backgroundColor: colors.background,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     overflow: 'hidden',
@@ -1605,9 +1609,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f3',
+    borderBottomColor: colors.border,
   },
   headerLeftRow: {
     flexDirection: 'row',
@@ -1624,12 +1628,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.8,
   },
   headerSub: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
     marginTop: 1,
   },
@@ -1637,7 +1641,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDark ? '#064e3b' : '#ecfdf5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -1654,11 +1658,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eaeaee',
+    borderBottomColor: colors.border,
   },
   stepItem: {
     flexDirection: 'row',
@@ -1677,7 +1681,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#047857',
   },
   stepCircleActive: {
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
   },
   stepCirclePending: {
     backgroundColor: '#e5e7eb',
@@ -1700,7 +1704,7 @@ const styles = StyleSheet.create({
     color: '#047857',
   },
   stepLabelActive: {
-    color: MyntraColors.text,
+    color: colors.text,
     fontWeight: '800',
   },
   stepLine: {
@@ -1718,7 +1722,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#fef2f2',
+    backgroundColor: isDark ? '#450a0a' : '#fef2f2',
     borderBottomWidth: 1,
     borderBottomColor: '#fecaca',
     paddingHorizontal: 14,
@@ -1738,11 +1742,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionCard: {
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e8e8ec',
+    borderColor: colors.border,
     gap: 10,
   },
   sectionHeaderRow: {
@@ -1758,7 +1762,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     letterSpacing: 0.6,
   },
   headerRightToggle: {
@@ -1768,7 +1772,7 @@ const styles = StyleSheet.create({
   },
   headerToggleText: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   addNewAddrBtn: {
@@ -1779,7 +1783,7 @@ const styles = StyleSheet.create({
   actionLinkText: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
     letterSpacing: 0.4,
   },
 
@@ -1788,23 +1792,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#fff0f3',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
   },
   deliveryEstimateText: {
     fontSize: 11,
-    color: MyntraColors.text,
+    color: colors.text,
   },
   boldText: {
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   itemsListContainer: {
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f4',
+    borderTopColor: colors.border,
     paddingTop: 10,
   },
   itemRow: {
@@ -1816,7 +1820,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 60,
     borderRadius: 4,
-    backgroundColor: '#f0f0f3',
+    backgroundColor: colors.backgroundElement,
   },
   itemInfo: {
     flex: 1,
@@ -1824,11 +1828,11 @@ const styles = StyleSheet.create({
   itemBrand: {
     fontSize: 11,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   itemName: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
   itemPillsRow: {
@@ -1838,19 +1842,19 @@ const styles = StyleSheet.create({
   },
   miniPill: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.backgroundElement,
     borderRadius: 3,
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
   miniPillLabel: {
     fontSize: 9.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
   },
   miniPillVal: {
     fontSize: 9.5,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   itemPriceRow: {
     flexDirection: 'row',
@@ -1861,11 +1865,11 @@ const styles = StyleSheet.create({
   itemFinalPrice: {
     fontSize: 12,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   itemOriginalPrice: {
     fontSize: 10.5,
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
 
@@ -1876,13 +1880,13 @@ const styles = StyleSheet.create({
   addressCard: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   addressCardSelected: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fffbfa',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   addressRadioRow: {
     flexDirection: 'row',
@@ -1900,13 +1904,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   radioOuterSelected: {
-    borderColor: MyntraColors.primary,
+    borderColor: colors.primary,
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
   },
   addressDetailsCol: {
     flex: 1,
@@ -1920,10 +1924,10 @@ const styles = StyleSheet.create({
   addrName: {
     fontSize: 12.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   addrTypeBadge: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.backgroundElement,
     borderRadius: 3,
     paddingHorizontal: 5,
     paddingVertical: 2,
@@ -1931,10 +1935,10 @@ const styles = StyleSheet.create({
   addrTypeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   defaultBadge: {
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDark ? '#064e3b' : '#ecfdf5',
     borderRadius: 3,
     paddingHorizontal: 5,
     paddingVertical: 2,
@@ -1955,16 +1959,16 @@ const styles = StyleSheet.create({
   editAddrBtnText: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   addrText: {
     fontSize: 11.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 16,
   },
   addrMobile: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 4,
   },
 
@@ -1976,13 +1980,13 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   formErrorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#fef2f2',
+    backgroundColor: isDark ? '#450a0a' : '#fef2f2',
     padding: 8,
     borderRadius: 6,
   },
@@ -1994,19 +1998,19 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.5,
     marginTop: 4,
   },
   formInput: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.backgroundElement,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 9,
     fontSize: 12,
-    color: MyntraColors.text,
+    color: colors.text,
   },
   formInputArea: {
     minHeight: 54,
@@ -2028,23 +2032,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 6,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   typePillActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff4f6',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   typeText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   typeTextActive: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   defaultCheckboxRow: {
@@ -2055,7 +2059,7 @@ const styles = StyleSheet.create({
   },
   defaultCheckboxText: {
     fontSize: 11.5,
-    color: MyntraColors.text,
+    color: colors.text,
   },
   formBtnRow: {
     flexDirection: 'row',
@@ -2066,21 +2070,21 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.border,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   formCancelText: {
     fontSize: 11,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   formSaveBtn: {
     flex: 1.5,
     paddingVertical: 10,
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2103,7 +2107,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f0fdf4',
+    backgroundColor: isDark ? '#064e3b' : '#f0fdf4',
     borderWidth: 1,
     borderColor: '#bbf7d0',
     borderRadius: 6,
@@ -2130,18 +2134,18 @@ const styles = StyleSheet.create({
   },
   couponTextInput: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.backgroundElement,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 12,
-    color: MyntraColors.text,
+    color: colors.text,
     fontWeight: '700',
   },
   applyCouponBtn: {
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 18,
     justifyContent: 'center',
     borderRadius: 6,
@@ -2174,18 +2178,18 @@ const styles = StyleSheet.create({
   availableCouponsToggleText: {
     fontSize: 11,
     fontWeight: '700',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   couponsList: {
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f4',
+    borderTopColor: colors.border,
     paddingTop: 8,
   },
   couponItemCard: {
-    backgroundColor: '#fafbfc',
+    backgroundColor: colors.backgroundElement,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 6,
     padding: 10,
     gap: 4,
@@ -2196,7 +2200,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   couponBadge: {
-    backgroundColor: '#fff0f3',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -2204,33 +2208,33 @@ const styles = StyleSheet.create({
   couponBadgeText: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   applyItemCouponBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: MyntraColors.primary,
+    borderColor: colors.primary,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
   },
   applyItemCouponBtnDisabled: {
-    borderColor: '#d1d5db',
+    borderColor: colors.border,
     opacity: 0.6,
   },
   applyItemCouponBtnText: {
     fontSize: 10,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   couponTitleText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   couponDescText: {
     fontSize: 10.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 14,
   },
   couponMinOrderWarning: {
@@ -2244,7 +2248,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#eff6ff',
+    backgroundColor: isDark ? '#1e3a8a' : '#eff6ff',
     borderWidth: 1,
     borderColor: '#bfdbfe',
     borderRadius: 6,
@@ -2258,14 +2262,14 @@ const styles = StyleSheet.create({
   },
   paymentOptionCard: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   paymentOptionCardActive: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fffbfa',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   paymentRadioRow: {
     flexDirection: 'row',
@@ -2283,11 +2287,11 @@ const styles = StyleSheet.create({
   paymentOptionTitle: {
     fontSize: 12.5,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   paymentOptionSub: {
     fontSize: 11,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   // UPI Sub-options
@@ -2302,23 +2306,23 @@ const styles = StyleSheet.create({
   },
   upiPill: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   upiPillSelected: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff4f6',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   upiPillText: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   upiPillTextSelected: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   customUpiRow: {
@@ -2328,14 +2332,14 @@ const styles = StyleSheet.create({
   },
   customUpiInput: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
     fontSize: 11.5,
-    color: MyntraColors.text,
+    color: colors.text,
   },
   verifyUpiBtn: {
     backgroundColor: '#1f2937',
@@ -2357,14 +2361,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardInput: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 7,
     fontSize: 11.5,
-    color: MyntraColors.text,
+    color: colors.text,
   },
   cardRowTwo: {
     flexDirection: 'row',
@@ -2382,23 +2386,23 @@ const styles = StyleSheet.create({
   },
   bankPill: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   bankPillSelected: {
-    borderColor: MyntraColors.primary,
-    backgroundColor: '#fff4f6',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   bankPillText: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   bankPillTextSelected: {
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
 
@@ -2411,21 +2415,21 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontSize: 11.5,
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
   },
   priceValue: {
     fontSize: 11.5,
     fontWeight: '600',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   freeDeliveryText: {
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
     fontWeight: '800',
   },
   discountValue: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: MyntraColors.ratingGreen,
+    color: colors.ratingGreen,
   },
   couponLabelRow: {
     flexDirection: 'row',
@@ -2433,7 +2437,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   couponTagPill: {
-    backgroundColor: '#fff0f3',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 3,
@@ -2441,32 +2445,32 @@ const styles = StyleSheet.create({
   couponTagPillText: {
     fontSize: 9,
     fontWeight: '800',
-    color: MyntraColors.primary,
+    color: colors.primary,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
     paddingTop: 8,
     marginTop: 6,
   },
   totalLabel: {
     fontSize: 13,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   totalValue: {
     fontSize: 15,
     fontWeight: '900',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   savingsStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: isDark ? '#064e3b' : '#f0fdf4',
     padding: 8,
     borderRadius: 6,
     marginTop: 4,
@@ -2492,7 +2496,7 @@ const styles = StyleSheet.create({
   trustItemText: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: MyntraColors.textSecondary,
+    color: colors.textSecondary,
     letterSpacing: 0.4,
   },
   trustDivider: {
@@ -2508,9 +2512,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
-    backgroundColor: MyntraColors.white,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#eaeaee',
+    borderTopColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.08,
@@ -2523,21 +2527,21 @@ const styles = StyleSheet.create({
   footerTotalLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: 0.4,
   },
   footerTotalVal: {
     fontSize: 15,
     fontWeight: '900',
-    color: MyntraColors.text,
+    color: colors.text,
   },
   footerViewDetailsText: {
     fontSize: 9.5,
-    color: MyntraColors.primary,
+    color: colors.primary,
     fontWeight: '700',
   },
   placeOrderBtn: {
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 6,
@@ -2585,7 +2589,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#ecfdf5',
+    backgroundColor: isDark ? '#064e3b' : '#ecfdf5',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 12,
@@ -2605,7 +2609,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   noticeModalCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     maxWidth: 440,
@@ -2621,7 +2625,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#fef3c7',
+    backgroundColor: isDark ? '#78350f' : '#fef3c7',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -2629,14 +2633,14 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: MyntraColors.text,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 6,
   },
   noticeOrderId: {
     fontSize: 13,
     fontWeight: '700',
-    color: MyntraColors.primary,
+    color: colors.primary,
     letterSpacing: 0.5,
     marginBottom: 12,
   },
@@ -2652,7 +2656,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   noticePrimaryBtn: {
-    backgroundColor: MyntraColors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -2664,13 +2668,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   noticeSecondaryBtn: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.backgroundElement,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   noticeSecondaryBtnText: {
-    color: MyntraColors.text,
+    color: colors.text,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.3,
@@ -2680,7 +2684,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noticeCancelBtnText: {
-    color: MyntraColors.textMuted,
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: '600',
   },

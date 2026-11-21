@@ -24,4 +24,8 @@ router.patch('/preferences', optionalAuth, notificationController.updatePreferen
 router.post('/promotions', optionalAuth, notificationController.sendPromotion);
 router.post('/test-event', optionalAuth, notificationController.triggerTestEvent);
 
+// Background scheduler inspection & trigger
+router.get('/scheduler/status', notificationController.getSchedulerStatus);
+router.post('/scheduler/trigger', notificationController.triggerSchedulerJob);
+
 module.exports = router;

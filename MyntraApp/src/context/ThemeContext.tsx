@@ -229,3 +229,5 @@ export const useThemeContext = (): ThemeContextType => {
   }
   return context;
 };
+
+export { useTheme } from '@/hooks/use-theme';

@@ -1,19 +1,17 @@
 const db = require('../db');
 const Product = require('./Product');
+const sqliteCart = require('../db/sqlite');
+const realtimeService = require('../services/realtimeService');
 
 class Bag {
   static getBagRaw(userId) {
     if (!userId) return [];
-    const data = db.read();
-    const bags = data.bags || {};
-    return bags[userId] || [];
+    return sqliteCart.getCartItems(userId);
   }
 
   static getSavedRaw(userId) {
     if (!userId) return [];
-    const data = db.read();
-    const saved = data.savedForLater || {};
-    return saved[userId] || [];
+    return sqliteCart.getSavedItems(userId);
   }
 
   /**
@@ -99,16 +97,18 @@ class Bag {
           hasPriceChanges = true;
         }
 
-        totalMRP += itemMRP;
-        subtotal += itemSellingPrice;
-        totalItems += qty;
+        if (isAvailable && !quantityExceedsStock) {
+          totalMRP += itemMRP;
+          subtotal += itemSellingPrice;
+          totalItems += qty;
+        }
 
         return {
           id: item.id || `item_${item.productId}_${item.size || 'default'}`,
           productId: item.productId,
           product,
           size: item.size || (product.sizes && product.sizes[0]) || 'M',
-          color: item.color || (product.colors && product.colors[0]) || 'Default',
+          color: item.color || (product.colors && product.colors[0]) || 'Standard',
           quantity: qty,
           unitPrice: trustedPrice,
           originalUnitPrice: trustedOriginalPrice,
@@ -122,16 +122,16 @@ class Bag {
           quantityExceedsStock,
           variantAvailable,
           priceChanged,
+          priceDiff: item.savedPrice !== undefined ? trustedPrice - Number(item.savedPrice) : 0,
           savedPrice: item.savedPrice !== undefined ? Number(item.savedPrice) : trustedPrice,
         };
       })
       .filter(Boolean);
 
     const discountAmount = Math.max(0, totalMRP - subtotal);
-    const deliveryFee = subtotal === 0 || subtotal >= 999 ? 0 : 99;
-    const finalTotal = subtotal === 0 ? 0 : subtotal + deliveryFee;
-
-    const savedRaw = this.getSavedRaw(userId);
+    // Free shipping threshold at ₹999 or ₹99 standard
+    const deliveryFee = subtotal >= 999 || totalItems === 0 ? 0 : 99;
+    const finalTotal = subtotal + deliveryFee;
 
     return {
       items,
@@ -142,15 +142,24 @@ class Bag {
       discountAmount,
       deliveryFee,
       finalTotal,
+      totals: {
+        totalMRP,
+        subtotal,
+        discountAmount,
+        deliveryFee,
+        finalTotal,
+        hasOutOfStockItems,
+        hasPriceChanges,
+        stockWarnings,
+      },
       hasOutOfStockItems,
       hasPriceChanges,
       stockWarnings,
-      savedForLaterCount: savedRaw.length,
     };
   }
 
   /**
-   * Fetch saved for later items with live product status and price changes
+   * Fetch saved for later items with live product data, availability, and price change detection
    */
   static getSavedForLaterWithProducts(userId) {
     const rawSaved = this.getSavedRaw(userId);
@@ -178,7 +187,7 @@ class Bag {
             },
             size: item.size || 'M',
             color: item.color || 'Default',
-            quantity: item.quantity || 1,
+            quantity: Math.max(1, parseInt(item.quantity, 10) || 1),
             unitPrice: item.savedPrice || 0,
             originalUnitPrice: item.savedPrice || 0,
             isAvailable: false,
@@ -271,54 +280,21 @@ class Bag {
       };
     }
 
-    let resultError = null;
+    try {
+      sqliteCart.addItem(userId, {
+        productId: cleanProdId,
+        size: chosenSize,
+        color: chosenColor,
+        quantity: addQty,
+        price: product.price,
+        availableStock,
+      });
 
-    db.transaction((data) => {
-      if (!data.bags) data.bags = {};
-      const userBag = data.bags[userId] || [];
-
-      // Check for duplicate product + variant
-      const existingIndex = userBag.findIndex(
-        (item) => item.productId === cleanProdId && item.size === chosenSize
-      );
-
-      if (existingIndex > -1) {
-        const currentQty = userBag[existingIndex].quantity || 1;
-        const combinedQty = currentQty + addQty;
-
-        if (combinedQty > availableStock) {
-          resultError = `Cannot add more. You already have ${currentQty} in your bag and only ${availableStock} are available in stock.`;
-          return;
-        }
-
-        if (combinedQty > 10) {
-          resultError = 'Maximum purchase limit is 10 units per item.';
-          return;
-        }
-
-        userBag[existingIndex].quantity = combinedQty;
-        userBag[existingIndex].savedPrice = product.price;
-        if (chosenColor) userBag[existingIndex].color = chosenColor;
-      } else {
-        userBag.push({
-          id: `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          productId: cleanProdId,
-          size: chosenSize,
-          color: chosenColor,
-          quantity: Math.min(10, addQty),
-          savedPrice: product.price,
-          addedAt: new Date().toISOString(),
-        });
-      }
-
-      data.bags[userId] = userBag;
-    });
-
-    if (resultError) {
-      return { error: resultError };
+      realtimeService.notifyCartUpdate(userId);
+      return this.getBagWithProducts(userId);
+    } catch (err) {
+      return { error: err.message };
     }
-
-    return this.getBagWithProducts(userId);
   }
 
   /**
@@ -330,95 +306,62 @@ class Bag {
     }
 
     const target = itemIdOrProdId.trim();
-    let resultError = null;
+    const rawItems = sqliteCart.getCartItems(userId);
+    const currentItem = rawItems.find((i) => i.id === target || i.productId === target);
 
-    db.transaction((data) => {
-      if (!data.bags) data.bags = {};
-      let userBag = data.bags[userId] || [];
-
-      // Prefer exact match by item.id, fallback to item.productId
-      let index = userBag.findIndex((item) => item.id === target);
-      if (index === -1) {
-        index = userBag.findIndex((item) => item.productId === target);
-      }
-
-      if (index === -1) {
-        resultError = 'Item not found in your bag.';
-        return;
-      }
-
-      const currentItem = userBag[index];
-      const product = (data.products || []).find((p) => p.id === currentItem.productId);
-
-      if (!product) {
-        resultError = 'Product is no longer available in catalogue.';
-        return;
-      }
-
-      const availableStock = product.inStock !== false ? Number(product.stockCount ?? 10) : 0;
-
-      if (quantity !== undefined) {
-        const q = parseInt(quantity, 10);
-        if (q <= 0) {
-          // Remove item if quantity is zero or negative
-          userBag = userBag.filter((_, i) => i !== index);
-          data.bags[userId] = userBag;
-          return;
-        }
-
-        if (product.inStock === false || availableStock <= 0) {
-          resultError = `"${product.name}" is currently out of stock.`;
-          return;
-        }
-
-        if (q > availableStock) {
-          resultError = `Requested quantity (${q}) exceeds available stock (${availableStock}).`;
-          return;
-        }
-
-        if (q > 10) {
-          resultError = 'Maximum purchase limit is 10 units per item.';
-          return;
-        }
-
-        userBag[index].quantity = q;
-        userBag[index].savedPrice = product.price;
-      }
-
-      if (size && size.trim() !== currentItem.size) {
-        const cleanSize = size.trim();
-        if (product.sizes && product.sizes.length > 0 && !product.sizes.includes(cleanSize)) {
-          resultError = `Size "${cleanSize}" is not available for this product.`;
-          return;
-        }
-
-        // Check if changing to this size conflicts with an existing line item
-        const duplicateIdx = userBag.findIndex(
-          (item, i) => i !== index && item.productId === currentItem.productId && item.size === cleanSize
-        );
-
-        if (duplicateIdx > -1) {
-          // Merge quantities into that line item
-          const mergedQty = Math.min(availableStock, Math.min(10, userBag[duplicateIdx].quantity + userBag[index].quantity));
-          userBag[duplicateIdx].quantity = mergedQty;
-          userBag = userBag.filter((_, i) => i !== index);
-        } else {
-          userBag[index].size = cleanSize;
-        }
-      }
-
-      if (color) {
-        userBag[index].color = color.trim();
-      }
-
-      data.bags[userId] = userBag;
-    });
-
-    if (resultError) {
-      return { error: resultError };
+    if (!currentItem) {
+      return { error: 'Item not found in your bag.' };
     }
 
-    return this.getBagWithProducts(userId);
+    const product = Product.findById(currentItem.productId);
+    if (!product) {
+      return { error: 'Product is no longer available in catalogue.' };
+    }
+
+    const availableStock = product.inStock !== false ? Number(product.stockCount ?? 10) : 0;
+
+    if (quantity !== undefined) {
+      const q = parseInt(quantity, 10);
+      if (q <= 0) {
+        sqliteCart.removeItem(userId, currentItem.id);
+        realtimeService.notifyCartUpdate(userId);
+        return this.getBagWithProducts(userId);
+      }
+
+      if (product.inStock === false || availableStock <= 0) {
+        return { error: `"${product.name}" is currently out of stock.` };
+      }
+
+      if (q > availableStock) {
+        return { error: `Requested quantity (${q}) exceeds available stock (${availableStock}).` };
+      }
+
+      if (q > 10) {
+        return { error: 'Maximum purchase limit is 10 units per item.' };
+      }
+    }
+
+    let cleanSize;
+    if (size && size.trim() !== currentItem.size) {
+      cleanSize = size.trim();
+      if (product.sizes && product.sizes.length > 0 && !product.sizes.includes(cleanSize)) {
+        return { error: `Size "${cleanSize}" is not available for this product.` };
+      }
+    }
+
+    try {
+      sqliteCart.updateItem(userId, currentItem.id, {
+        quantity: quantity !== undefined ? parseInt(quantity, 10) : undefined,
+        size: cleanSize,
+        color: color ? color.trim() : undefined,
+        availableStock,
+      });
+
+      realtimeService.notifyCartUpdate(userId);
+      return this.getBagWithProducts(userId);
+    } catch (err) {
+      return { error: err.message };
+    }
   }
 
   /**
@@ -429,41 +372,36 @@ class Bag {
       return { error: 'Invalid remove request.' };
     }
 
-    const target = itemIdOrProdId.trim();
-    let found = false;
-
-    db.transaction((data) => {
-      if (!data.bags) data.bags = {};
-      const userBag = data.bags[userId] || [];
-
-      // Match by item.id first, or by productId
-      const index = userBag.findIndex((item) => item.id === target || item.productId === target);
-      if (index > -1) {
-        found = true;
-        userBag.splice(index, 1);
-        data.bags[userId] = userBag;
-      }
-    });
-
-    if (!found) {
+    const removed = sqliteCart.removeItem(userId, itemIdOrProdId.trim());
+    if (!removed) {
       return { error: 'Item not found in bag.' };
     }
 
-    return this.getBagWithProducts(userId);
+    realtimeService.notifyCartUpdate(userId);
+    const bagWithProducts = this.getBagWithProducts(userId);
+    return {
+      success: true,
+      message: 'Item removed from bag.',
+      removedItem: removed,
+      ...bagWithProducts,
+      bag: bagWithProducts,
+    };
   }
 
   /**
-   * Clear all active bag items
+   * Clear all items from user's shopping bag
    */
   static clearBag(userId) {
-    if (!userId) return null;
-
-    db.transaction((data) => {
-      if (!data.bags) data.bags = {};
-      data.bags[userId] = [];
-    });
-
-    return this.getBagWithProducts(userId);
+    if (!userId) return { error: 'User ID is required.' };
+    sqliteCart.clearCart(userId);
+    realtimeService.notifyCartUpdate(userId);
+    const bagWithProducts = this.getBagWithProducts(userId);
+    return {
+      success: true,
+      message: 'Bag cleared successfully.',
+      ...bagWithProducts,
+      bag: bagWithProducts,
+    };
   }
 
   /**
@@ -474,76 +412,19 @@ class Bag {
       return { error: 'User ID and Item ID are required.' };
     }
 
-    const target = itemIdOrProdId.trim();
-    let movedItem = null;
-    let resultError = null;
-
-    db.transaction((data) => {
-      if (!data.bags) data.bags = {};
-      if (!data.savedForLater) data.savedForLater = {};
-
-      const userBag = data.bags[userId] || [];
-      const userSaved = data.savedForLater[userId] || [];
-
-      // Find item in bag
-      let index = userBag.findIndex((item) => item.id === target);
-      if (index === -1) {
-        index = userBag.findIndex((item) => item.productId === target);
-      }
-
-      if (index === -1) {
-        resultError = 'Item not found in your bag.';
-        return;
-      }
-
-      const item = userBag[index];
-      // Remove from bag
-      userBag.splice(index, 1);
-      data.bags[userId] = userBag;
-
-      // Find current live price
-      const product = (data.products || []).find((p) => p.id === item.productId);
-      const currentPrice = product ? product.price : (item.savedPrice || 0);
-
-      // Check if duplicate already exists in saved list
-      const savedIndex = userSaved.findIndex(
-        (s) => s.productId === item.productId && s.size === item.size
-      );
-
-      if (savedIndex > -1) {
-        // Update quantity and timestamp
-        userSaved[savedIndex].quantity = Math.min(10, (userSaved[savedIndex].quantity || 1) + (item.quantity || 1));
-        userSaved[savedIndex].savedPrice = currentPrice;
-        userSaved[savedIndex].savedAt = new Date().toISOString();
-        movedItem = userSaved[savedIndex];
-      } else {
-        const newSavedItem = {
-          id: `saved_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          productId: item.productId,
-          size: item.size,
-          color: item.color,
-          quantity: item.quantity || 1,
-          savedPrice: currentPrice,
-          savedAt: new Date().toISOString(),
-        };
-        userSaved.unshift(newSavedItem);
-        movedItem = newSavedItem;
-      }
-
-      data.savedForLater[userId] = userSaved;
-    });
-
-    if (resultError) {
-      return { error: resultError };
+    try {
+      const movedItem = sqliteCart.saveForLater(userId, itemIdOrProdId.trim());
+      realtimeService.notifyCartUpdate(userId);
+      return {
+        success: true,
+        message: 'Item moved to Save for Later.',
+        movedItem,
+        bag: this.getBagWithProducts(userId),
+        savedForLater: this.getSavedForLaterWithProducts(userId),
+      };
+    } catch (err) {
+      return { error: err.message };
     }
-
-    return {
-      success: true,
-      message: 'Item moved to Save for Later.',
-      movedItem,
-      bag: this.getBagWithProducts(userId),
-      savedForLater: this.getSavedForLaterWithProducts(userId),
-    };
   }
 
   /**
@@ -555,121 +436,56 @@ class Bag {
     }
 
     const target = itemIdOrProdId.trim();
-    let resultError = null;
+    const rawSaved = sqliteCart.getSavedItems(userId);
+    const saved = rawSaved.find((s) => s.id === target || s.productId === target);
 
-    db.transaction((data) => {
-      if (!data.bags) data.bags = {};
-      if (!data.savedForLater) data.savedForLater = {};
-
-      const userSaved = data.savedForLater[userId] || [];
-      const userBag = data.bags[userId] || [];
-
-      // Find item in saved list
-      let index = userSaved.findIndex((item) => item.id === target);
-      if (index === -1) {
-        index = userSaved.findIndex((item) => item.productId === target);
-      }
-
-      if (index === -1) {
-        resultError = 'Item not found in Save for Later.';
-        return;
-      }
-
-      const savedItem = userSaved[index];
-      const product = (data.products || []).find((p) => p.id === savedItem.productId);
-
-      if (!product) {
-        resultError = 'This product is no longer available in the catalogue.';
-        return;
-      }
-
-      const availableStock = product.inStock !== false ? Number(product.stockCount ?? 10) : 0;
-      if (product.inStock === false || availableStock <= 0) {
-        resultError = `"${product.name}" is currently out of stock and cannot be moved to bag.`;
-        return;
-      }
-
-      if (product.sizes && product.sizes.length > 0 && !product.sizes.includes(savedItem.size)) {
-        resultError = `Size "${savedItem.size}" is no longer available for "${product.name}".`;
-        return;
-      }
-
-      // Check if item already exists in active bag
-      const existingBagIndex = userBag.findIndex(
-        (b) => b.productId === savedItem.productId && b.size === savedItem.size
-      );
-
-      const requestedQty = savedItem.quantity || 1;
-
-      if (existingBagIndex > -1) {
-        const currentQty = userBag[existingBagIndex].quantity || 1;
-        if (currentQty >= availableStock) {
-          resultError = `Cannot move to bag. You already have the maximum available stock (${availableStock}) in your bag.`;
-          return;
-        }
-
-        const newQty = Math.min(10, Math.min(availableStock, currentQty + requestedQty));
-        userBag[existingBagIndex].quantity = newQty;
-        userBag[existingBagIndex].savedPrice = product.price;
-      } else {
-        const initialQty = Math.min(10, Math.min(availableStock, requestedQty));
-        userBag.push({
-          id: `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          productId: savedItem.productId,
-          size: savedItem.size,
-          color: savedItem.color,
-          quantity: initialQty,
-          savedPrice: product.price,
-          addedAt: new Date().toISOString(),
-        });
-      }
-
-      // Remove from saved list
-      userSaved.splice(index, 1);
-
-      data.bags[userId] = userBag;
-      data.savedForLater[userId] = userSaved;
-    });
-
-    if (resultError) {
-      return { error: resultError };
+    if (!saved) {
+      return { error: 'Item not found in Save for Later.' };
     }
 
-    return {
-      success: true,
-      message: 'Item moved back to Bag.',
-      bag: this.getBagWithProducts(userId),
-      savedForLater: this.getSavedForLaterWithProducts(userId),
-    };
+    const product = Product.findById(saved.productId);
+    if (!product) {
+      return { error: 'This product is no longer available in the catalogue.' };
+    }
+
+    const availableStock = product.inStock !== false ? Number(product.stockCount ?? 10) : 0;
+    if (product.inStock === false || availableStock <= 0) {
+      return { error: `"${product.name}" is currently out of stock and cannot be moved to bag.` };
+    }
+
+    if (product.sizes && product.sizes.length > 0 && !product.sizes.includes(saved.size)) {
+      return { error: `Size "${saved.size}" is no longer available for "${product.name}".` };
+    }
+
+    try {
+      const movedItem = sqliteCart.moveToCart(userId, saved.id, availableStock);
+      realtimeService.notifyCartUpdate(userId);
+      return {
+        success: true,
+        message: 'Item moved to shopping bag.',
+        movedItem,
+        bag: this.getBagWithProducts(userId),
+        savedForLater: this.getSavedForLaterWithProducts(userId),
+      };
+    } catch (err) {
+      return { error: err.message };
+    }
   }
 
   /**
-   * Remove item from Save for Later
+   * Remove item from Save for Later list
    */
   static removeSavedItem(userId, itemIdOrProdId) {
     if (!userId || !itemIdOrProdId) {
       return { error: 'Invalid remove request.' };
     }
 
-    const target = itemIdOrProdId.trim();
-    let found = false;
-
-    db.transaction((data) => {
-      if (!data.savedForLater) data.savedForLater = {};
-      const userSaved = data.savedForLater[userId] || [];
-
-      const index = userSaved.findIndex((item) => item.id === target || item.productId === target);
-      if (index > -1) {
-        found = true;
-        userSaved.splice(index, 1);
-        data.savedForLater[userId] = userSaved;
-      }
-    });
-
-    if (!found) {
+    const removed = sqliteCart.removeSavedItem(userId, itemIdOrProdId.trim());
+    if (!removed) {
       return { error: 'Item not found in Save for Later.' };
     }
 
+    realtimeService.notifyCartUpdate(userId);
     return {
       success: true,
       message: 'Item removed from Save for Later.',
@@ -685,88 +501,18 @@ class Bag {
       return { error: 'User ID is required for merge.' };
     }
 
-    db.transaction((data) => {
-      if (!data.bags) data.bags = {};
-      if (!data.savedForLater) data.savedForLater = {};
-
-      const userBag = data.bags[userId] || [];
-      const userSaved = data.savedForLater[userId] || [];
-      const products = data.products || [];
-      const productMap = new Map(products.map((p) => [p.id, p]));
-
-      // 1. Merge active cart items
-      for (const gItem of cartItems) {
-        if (!gItem.productId) continue;
-        const product = productMap.get(gItem.productId);
-        if (!product) continue;
-
-        const availableStock = product.inStock !== false ? Number(product.stockCount ?? 10) : 0;
-        if (availableStock <= 0) continue;
-
-        const chosenSize = gItem.size || (product.sizes && product.sizes[0]) || 'M';
-        const chosenColor = gItem.color || (product.colors && product.colors[0]) || 'Standard';
-        const addQty = Math.max(1, parseInt(gItem.quantity, 10) || 1);
-
-        const matchIndex = userBag.findIndex(
-          (u) => u.productId === gItem.productId && u.size === chosenSize
-        );
-
-        if (matchIndex > -1) {
-          const currentQty = userBag[matchIndex].quantity || 1;
-          userBag[matchIndex].quantity = Math.min(10, Math.min(availableStock, currentQty + addQty));
-          userBag[matchIndex].savedPrice = product.price;
-        } else {
-          userBag.push({
-            id: `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            productId: gItem.productId,
-            size: chosenSize,
-            color: chosenColor,
-            quantity: Math.min(10, Math.min(availableStock, addQty)),
-            savedPrice: product.price,
-            addedAt: new Date().toISOString(),
-          });
-        }
-      }
-
-      // 2. Merge saved-for-later items
-      for (const sItem of savedForLaterItems) {
-        if (!sItem.productId) continue;
-        const product = productMap.get(sItem.productId);
-        if (!product) continue;
-
-        const chosenSize = sItem.size || (product.sizes && product.sizes[0]) || 'M';
-        const chosenColor = sItem.color || (product.colors && product.colors[0]) || 'Standard';
-
-        const matchIndex = userSaved.findIndex(
-          (s) => s.productId === sItem.productId && s.size === chosenSize
-        );
-
-        if (matchIndex > -1) {
-          userSaved[matchIndex].quantity = Math.min(10, (userSaved[matchIndex].quantity || 1) + (sItem.quantity || 1));
-          userSaved[matchIndex].savedPrice = product.price;
-        } else {
-          userSaved.push({
-            id: `saved_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            productId: sItem.productId,
-            size: chosenSize,
-            color: chosenColor,
-            quantity: Math.max(1, parseInt(sItem.quantity, 10) || 1),
-            savedPrice: product.price,
-            savedAt: new Date().toISOString(),
-          });
-        }
-      }
-
-      data.bags[userId] = userBag;
-      data.savedForLater[userId] = userSaved;
-    });
-
-    return {
-      success: true,
-      message: 'Guest items merged successfully.',
-      bag: this.getBagWithProducts(userId),
-      savedForLater: this.getSavedForLaterWithProducts(userId),
-    };
+    try {
+      sqliteCart.mergeGuestCart(userId, { cartItems, savedForLaterItems });
+      realtimeService.notifyCartUpdate(userId);
+      return {
+        success: true,
+        message: 'Guest items merged successfully.',
+        bag: this.getBagWithProducts(userId),
+        savedForLater: this.getSavedForLaterWithProducts(userId),
+      };
+    } catch (err) {
+      return { error: err.message };
+    }
   }
 
   /**

@@ -397,7 +397,15 @@ class Database {
         this.init();
       }
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      return JSON.parse(raw);
+      const data = JSON.parse(raw);
+      try {
+        const sqliteCart = require('./db/sqlite');
+        data.bags = sqliteCart.getAllBags();
+        data.savedForLater = sqliteCart.getAllSaved();
+      } catch (sqErr) {
+        // Fallback to json if sqlite module not ready
+      }
+      return data;
     } catch (err) {
       console.error('Error reading database:', err);
       return {
@@ -433,10 +441,20 @@ class Database {
   }
 
   transaction(fn) {
-    const data = this.read();
-    const result = fn(data);
-    this.write(data);
-    return result;
+    try {
+      const sqliteCart = require('./db/sqlite');
+      return sqliteCart.transaction(() => {
+        const data = this.read();
+        const result = fn(data);
+        this.write(data);
+        return result;
+      });
+    } catch (e) {
+      const data = this.read();
+      const result = fn(data);
+      this.write(data);
+      return result;
+    }
   }
 }
 

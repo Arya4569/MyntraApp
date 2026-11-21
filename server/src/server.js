@@ -104,6 +104,9 @@ app.use((err, req, res, next) => {
 
 // Start listening if run directly
 if (require.main === module) {
+  const schedulerService = require('./services/schedulerService');
+  schedulerService.init();
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`===============================================`);
     console.log(`🚀 Myntra Backend API running on port ${PORT}`);

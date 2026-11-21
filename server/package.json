@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
-    "test": "node test-auth.js && node test-email-otp.js && node test-api.js && node test-notifications.js && node test-orders.js && node test-cart.js && node test-address-isolation.js && node test-recommendations.js && node test-multiuser-isolation.js"
+    "test": "node test-auth.js && node test-email-otp.js && node test-api.js && node test-notifications.js && node test-orders.js && node test-cart.js && node test-address-isolation.js && node test-recommendations.js && node test-multiuser-isolation.js && node test-recently-viewed.js && node test-scheduler.js && node test-order-filters.js && node test-cart-concurrency.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -14,6 +14,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.6.0",
     "nodemailer": "^10.6.0",
     "pdfkit": "^0.20.2",
     "razorpay": "^2.9.8"

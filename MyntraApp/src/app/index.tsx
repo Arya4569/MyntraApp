@@ -446,6 +446,12 @@ export default function HomeScreen() {
           }
         }
       },
+      onRecentlyViewedUpdate: ({ productIds }) => {
+        // Cross-device synchronization of browsing history (isolated to authenticated user)
+        if (Array.isArray(productIds)) {
+          setRecentlyViewedIds(productIds.slice(0, 20));
+        }
+      },
     });
 
     return () => {

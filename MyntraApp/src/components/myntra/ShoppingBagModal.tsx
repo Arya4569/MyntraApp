@@ -15,7 +15,7 @@ import {
 
 import { CheckoutModal } from './CheckoutModal';
 
-import { MyntraColors, Spacing } from '@/constants/myntra-theme';
+import { Spacing } from '@/constants/myntra-theme';
 import { useAuth } from '@/context/AuthContext';
 import { AVAILABLE_COUPONS, Product, PRODUCTS } from '@/data/mock-data';
 import { useTheme } from '@/hooks/use-theme';
@@ -379,7 +379,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <TouchableOpacity onPress={handleCloseAll} style={styles.backBtn} activeOpacity={0.7}>
-                <Ionicons name="arrow-back" size={22} color={MyntraColors.text} />
+                <Ionicons name="arrow-back" size={22} color={colors.text} />
               </TouchableOpacity>
               <View>
                 <Text style={styles.headerTitle}>MY BAG</Text>
@@ -406,7 +406,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                   <Ionicons
                     name="sync-outline"
                     size={20}
-                    color={isRefreshing ? MyntraColors.primary : MyntraColors.textMuted}
+                    color={isRefreshing ? colors.primary : colors.textMuted}
                   />
                 </TouchableOpacity>
               )}
@@ -416,7 +416,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                   style={styles.headerActionBtn}
                   activeOpacity={0.7}
                   accessibilityLabel="Clear shopping bag">
-                  <Ionicons name="trash-outline" size={20} color={MyntraColors.textMuted} />
+                  <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -424,7 +424,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                 style={styles.headerActionBtn}
                 activeOpacity={0.7}
                 accessibilityLabel="Close bag">
-                <Ionicons name="close" size={22} color={MyntraColors.text} />
+                <Ionicons name="close" size={22} color={colors.text} />
               </TouchableOpacity>
             </View>
           </View>
@@ -439,7 +439,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                 <Ionicons
                   name="bag-handle-outline"
                   size={52}
-                  color={MyntraColors.primary}
+                  color={colors.primary}
                 />
               </View>
               <Text style={styles.emptyTitle}>YOUR SHOPPING BAG IS EMPTY</Text>
@@ -488,7 +488,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                             onAddToCart?.(product, defSize, product.colors[0]);
                           }}
                           activeOpacity={0.8}>
-                          <Ionicons name="bag-add" size={13} color={MyntraColors.primary} />
+                          <Ionicons name="bag-add" size={13} color={colors.primary} />
                           <Text style={styles.emptyRecAddText}>ADD TO BAG</Text>
                         </TouchableOpacity>
                       </View>
@@ -506,7 +506,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                 <Ionicons
                   name="checkmark-circle"
                   size={58}
-                  color={MyntraColors.ratingGreen}
+                  color={colors.ratingGreen}
                 />
               </View>
               <Text style={styles.confirmedTitle}>ORDER PLACED SUCCESSFULLY!</Text>
@@ -574,7 +574,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                 {/* Notice when active cart is empty but saved items exist */}
                 {cartItems.length === 0 && (
                   <View style={styles.emptyCartWithSavedCard}>
-                    <Ionicons name="bag-outline" size={32} color={MyntraColors.textMuted} />
+                    <Ionicons name="bag-outline" size={32} color={colors.textMuted} />
                     <Text style={styles.emptyCartWithSavedTitle}>Your Active Bag is Empty</Text>
                     <Text style={styles.emptyCartWithSavedSub}>
                       You have {savedForLaterItems.length} item{savedForLaterItems.length === 1 ? '' : 's'} in your Save for Later list below. Move items to your bag when you are ready to checkout.
@@ -587,7 +587,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                 {/* Delivery Address / PIN Code Strip */}
                 <View style={styles.deliveryBanner}>
                   <View style={styles.deliveryBannerLeft}>
-                    <Ionicons name="location-outline" size={18} color={MyntraColors.text} />
+                    <Ionicons name="location-outline" size={18} color={colors.text} />
                     <View style={styles.deliveryBannerTextCol}>
                       <Text style={styles.deliveryToLabel}>
                         Deliver to: <Text style={styles.deliveryToBold}>{selectedAddress ? selectedAddress.name : 'Current Location'}</Text>, {deliveryCity ? `${deliveryCity} - ` : ''}{deliveryPincode}
@@ -611,7 +611,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                     <Ionicons
                       name="car-outline"
                       size={16}
-                      color={isFreeDelivery ? MyntraColors.ratingGreen : MyntraColors.primary}
+                      color={isFreeDelivery ? colors.ratingGreen : colors.primary}
                     />
                     <Text style={styles.freeDelText}>
                       {isFreeDelivery
@@ -665,7 +665,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                               <Ionicons
                                 name="close"
                                 size={17}
-                                color={MyntraColors.textMuted}
+                                color={colors.textMuted}
                               />
                             </TouchableOpacity>
                           </View>
@@ -684,7 +684,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                               <Text style={styles.variantPickerText}>
                                 Size: <Text style={styles.variantPickerBold}>{item.size}</Text>
                               </Text>
-                              <Ionicons name="chevron-down" size={12} color={MyntraColors.textSecondary} />
+                              <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
                             </TouchableOpacity>
 
                             {item.color && (
@@ -717,7 +717,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                                 style={styles.stepperBtn}
                                 activeOpacity={0.7}
                                 accessibilityLabel="Decrease quantity">
-                                <Ionicons name="remove" size={14} color={MyntraColors.text} />
+                                <Ionicons name="remove" size={14} color={colors.text} />
                               </TouchableOpacity>
                               <Text style={styles.stepperQty}>{item.quantity}</Text>
                               <TouchableOpacity
@@ -743,8 +743,8 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                                     (item.availableStock !== undefined
                                       ? item.availableStock
                                       : item.product.stockCount ?? 10) <= item.quantity
-                                      ? MyntraColors.textMuted
-                                      : MyntraColors.text
+                                      ? colors.textMuted
+                                      : colors.text
                                   }
                                 />
                               </TouchableOpacity>
@@ -785,7 +785,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                               <Ionicons
                                 name="bookmark-outline"
                                 size={14}
-                                color={MyntraColors.textSecondary}
+                                color={colors.textSecondary}
                               />
                               <Text style={styles.saveForLaterText}>SAVE FOR LATER</Text>
                             </TouchableOpacity>
@@ -803,7 +803,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                               <Ionicons
                                 name="heart-outline"
                                 size={14}
-                                color={MyntraColors.primary}
+                                color={colors.primary}
                               />
                               <Text style={styles.moveToWishlistText}>MOVE TO WISHLIST</Text>
                             </TouchableOpacity>
@@ -821,7 +821,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                       <Ionicons
                         name="pricetag-outline"
                         size={16}
-                        color={MyntraColors.primary}
+                        color={colors.primary}
                       />
                       <Text style={styles.couponSectionTitle}>COUPONS & OFFERS</Text>
                     </View>
@@ -839,7 +839,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                     <TextInput
                       style={styles.couponInput}
                       placeholder="Enter Coupon Code (e.g. MYNTRA500)"
-                      placeholderTextColor={MyntraColors.textMuted}
+                      placeholderTextColor={colors.textMuted}
                       autoCapitalize="characters"
                       value={couponCodeInput}
                       onChangeText={setCouponCodeInput}
@@ -962,7 +962,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                       <Ionicons
                         name="checkmark-circle"
                         size={14}
-                        color={MyntraColors.ratingGreen}
+                        color={colors.ratingGreen}
                       />
                       <Text style={styles.savingsTagText}>
                         You are saving ₹{totalSavings} on this order!
@@ -978,7 +978,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                   <View style={styles.savedSectionContainer}>
                     <View style={styles.savedHeaderRow}>
                       <View style={styles.savedHeaderLeft}>
-                        <Ionicons name="bookmark" size={15} color={MyntraColors.primary} />
+                        <Ionicons name="bookmark" size={15} color={colors.primary} />
                         <Text style={styles.savedSectionTitle}>
                           SAVED FOR LATER ({savedForLaterItems.length})
                         </Text>
@@ -1034,7 +1034,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                                   style={styles.removeSavedCrossBtn}
                                   activeOpacity={0.7}
                                   accessibilityLabel="Remove saved item">
-                                  <Ionicons name="close" size={16} color={MyntraColors.textMuted} />
+                                  <Ionicons name="close" size={16} color={colors.textMuted} />
                                 </TouchableOpacity>
                               </View>
 
@@ -1132,7 +1132,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                                 <Ionicons
                                   name="bag-add-outline"
                                   size={13}
-                                  color={isUnavailable || isOOS ? MyntraColors.textMuted : '#fff'}
+                                  color={isUnavailable || isOOS ? colors.textMuted : '#fff'}
                                 />
                                 <Text
                                   style={[
@@ -1287,7 +1287,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                   <View style={styles.variantSheetHeader}>
                     <Text style={styles.variantSheetTitle}>SELECT SIZE</Text>
                     <TouchableOpacity onPress={() => setVariantModalItem(null)}>
-                      <Ionicons name="close" size={20} color={MyntraColors.text} />
+                      <Ionicons name="close" size={20} color={colors.text} />
                     </TouchableOpacity>
                   </View>
 
@@ -1330,7 +1330,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                   <View style={styles.addressSheetHeader}>
                     <Text style={styles.addressSheetTitle}>DELIVERY DETAILS</Text>
                     <TouchableOpacity onPress={() => setShowAddressPicker(false)}>
-                      <Ionicons name="close" size={20} color={MyntraColors.text} />
+                      <Ionicons name="close" size={20} color={colors.text} />
                     </TouchableOpacity>
                   </View>
 
@@ -1339,7 +1339,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                     <TextInput
                       style={styles.pincodeInput}
                       placeholder="Enter 6-digit PIN Code"
-                      placeholderTextColor={MyntraColors.textMuted}
+                      placeholderTextColor={colors.textMuted}
                       keyboardType="number-pad"
                       maxLength={6}
                       value={pincodeInput}
@@ -1369,7 +1369,7 @@ export const ShoppingBagModal: React.FC<ShoppingBagModalProps> = ({
                             <Ionicons
                               name={isChosen ? 'radio-button-on' : 'radio-button-off'}
                               size={18}
-                              color={isChosen ? MyntraColors.primary : MyntraColors.textMuted}
+                              color={isChosen ? colors.primary : colors.textMuted}
                             />
                             <View style={styles.addrTextCol}>
                               <Text style={styles.addrName}>{addr.name} ({addr.addressType})</Text>

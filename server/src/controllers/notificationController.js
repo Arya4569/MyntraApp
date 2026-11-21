@@ -446,3 +446,45 @@ exports.triggerTestEvent = async (req, res) => {
     });
   }
 };
+
+/**
+ * GET /api/notifications/scheduler/status
+ * Get status of background schedulers and jobs
+ */
+exports.getSchedulerStatus = (req, res) => {
+  try {
+    const schedulerService = require('../services/schedulerService');
+    const status = schedulerService.getStatus();
+    return res.status(200).json({
+      success: true,
+      scheduler: status,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+/**
+ * POST /api/notifications/scheduler/trigger
+ * Manually trigger a scheduled job (e.g. abandoned_carts)
+ */
+exports.triggerSchedulerJob = async (req, res) => {
+  try {
+    const schedulerService = require('../services/schedulerService');
+    const { job = 'abandoned_carts' } = req.body;
+    const result = await schedulerService.runJob(job);
+    return res.status(200).json({
+      success: true,
+      job,
+      execution: result,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};

@@ -1,0 +1,412 @@
+{
+  "summary": {
+    "total": 50,
+    "passed": 50,
+    "failed": 0,
+    "blocked": 0
+  },
+  "phases": {
+    "requirements": [
+      {
+        "testCaseId": "TC-AUTH-01",
+        "title": "User Registration with valid credentials",
+        "status": "PASS",
+        "httpStatus": 201,
+        "duration": 297,
+        "evidence": {
+          "userCreated": true,
+          "tokenProvided": true
+        }
+      },
+      {
+        "testCaseId": "TC-AUTH-02",
+        "title": "Prevent duplicate email registration",
+        "status": "PASS",
+        "httpStatus": 400,
+        "errorMsg": "An account with this email address already exists. Please log in."
+      },
+      {
+        "testCaseId": "TC-AUTH-03",
+        "title": "User Login with correct password",
+        "status": "PASS",
+        "httpStatus": 200,
+        "duration": 112
+      },
+      {
+        "testCaseId": "TC-AUTH-04",
+        "title": "Reject login with invalid password",
+        "status": "PASS",
+        "httpStatus": 401
+      },
+      {
+        "testCaseId": "TC-AUTH-05",
+        "title": "OTP Generation and Dispatch to email",
+        "status": "PASS",
+        "httpStatus": 200,
+        "duration": 3499
+      },
+      {
+        "testCaseId": "TC-AUTH-06",
+        "title": "OTP Login with valid OTP (devOtp omitted in prod)",
+        "status": "PASS",
+        "note": "Live OTP was dispatched via SMTP/Nodemailer"
+      },
+      {
+        "testCaseId": "TC-AUTH-07",
+        "title": "Reject invalid OTP code",
+        "status": "PASS",
+        "httpStatus": 400,
+        "errorMsg": "Invalid OTP code. (3 attempts remaining)"
+      },
+      {
+        "testCaseId": "TC-AUTH-08",
+        "title": "Session persistence and protected /api/auth/me verification",
+        "status": "PASS",
+        "httpStatus": 200,
+        "userId": "usr_1795228412279_qa2n6a"
+      },
+      {
+        "testCaseId": "TC-PROD-01",
+        "title": "Guest product browsing and pagination",
+        "status": "PASS",
+        "httpStatus": 200,
+        "count": 10
+      },
+      {
+        "testCaseId": "TC-PROD-02",
+        "title": "Product details retrieval with full variants",
+        "status": "PASS",
+        "httpStatus": 200,
+        "productName": "Court Ultra Classic Sneakers"
+      },
+      {
+        "testCaseId": "TC-PROD-03",
+        "title": "Category filtering for Men",
+        "status": "PASS",
+        "httpStatus": 200,
+        "count": 9
+      },
+      {
+        "testCaseId": "TC-PROD-04",
+        "title": "Product search by keyword (\"shirt\")",
+        "status": "PASS",
+        "httpStatus": 200,
+        "resultsCount": 5
+      },
+      {
+        "testCaseId": "TC-PROD-05",
+        "title": "Product sorting by price (asc)",
+        "status": "PASS",
+        "httpStatus": 200,
+        "p1": 1084,
+        "p2": 4495
+      },
+      {
+        "testCaseId": "TC-PROD-06",
+        "title": "Product inventory schema validation (inStock, stockCount)",
+        "status": "PASS",
+        "sampleItemStock": 41
+      },
+      {
+        "testCaseId": "TC-ISO-01",
+        "title": "Cart Isolation: User B cannot view User A cart items",
+        "status": "PASS",
+        "userA_cartCount": 1,
+        "userB_cartCount": 0
+      },
+      {
+        "testCaseId": "TC-ISO-02",
+        "title": "Wishlist Isolation: User B cannot view User A wishlist",
+        "status": "PASS",
+        "userB_wishlistCount": 0
+      },
+      {
+        "testCaseId": "TC-ISO-03",
+        "title": "Recently Viewed Isolation: User B cannot see User A browsing history",
+        "status": "PASS",
+        "userB_historyCount": 0
+      },
+      {
+        "testCaseId": "TC-WISH-01",
+        "title": "Add product to wishlist",
+        "status": "PASS",
+        "httpStatus": 200
+      },
+      {
+        "testCaseId": "TC-WISH-02",
+        "title": "Wishlist duplicate prevention",
+        "status": "PASS",
+        "occurrences": 1
+      },
+      {
+        "testCaseId": "TC-WISH-03",
+        "title": "Remove product from wishlist",
+        "status": "PASS",
+        "httpStatus": 200
+      },
+      {
+        "testCaseId": "TC-CART-01",
+        "title": "Add item to active cart with variant & size",
+        "status": "PASS",
+        "httpStatus": 201,
+        "itemCount": 1
+      },
+      {
+        "testCaseId": "TC-CART-02",
+        "title": "Update cart item quantity to 3",
+        "status": "PASS",
+        "httpStatus": 200,
+        "newQuantity": 3
+      },
+      {
+        "testCaseId": "TC-CART-03",
+        "title": "Save for Later moves item from active bag",
+        "status": "PASS",
+        "httpStatus": 200,
+        "cartLength": 0
+      },
+      {
+        "testCaseId": "TC-CART-04",
+        "title": "Move from Saved for Later back to active bag",
+        "status": "PASS",
+        "httpStatus": 200,
+        "cartLength": 1
+      },
+      {
+        "testCaseId": "TC-CART-05",
+        "title": "Stock check rejects purchase exceeding stock limit",
+        "status": "PASS",
+        "httpStatus": 400,
+        "errorMsg": "Requested quantity (999) exceeds available stock (40)."
+      },
+      {
+        "testCaseId": "TC-CART-06",
+        "title": "Guest cart merge into user account",
+        "status": "PASS",
+        "httpStatus": 200,
+        "mergedCartCount": 2
+      },
+      {
+        "testCaseId": "TC-CART-07",
+        "title": "Server-side checkout validation endpoint",
+        "status": "PASS",
+        "httpStatus": 200,
+        "isValid": false,
+        "issuesCount": 1
+      },
+      {
+        "testCaseId": "TC-PAY-01",
+        "title": "Retrieve public payment gateway key",
+        "status": "PASS",
+        "httpStatus": 200,
+        "keyIdPrefix": "rzp_test"
+      },
+      {
+        "testCaseId": "TC-PAY-02",
+        "title": "Create Razorpay payment order",
+        "status": "PASS",
+        "httpStatus": 200,
+        "paymentOrderId": "order_U2f6FwsVhYmuE6"
+      },
+      {
+        "testCaseId": "TC-PAY-03",
+        "title": "Verify payment with valid HMAC SHA256 signature",
+        "status": "PASS",
+        "httpStatus": 200,
+        "verified": true
+      },
+      {
+        "testCaseId": "TC-PAY-04",
+        "title": "Process payment webhook with valid signature",
+        "status": "PASS",
+        "httpStatus": 200
+      },
+      {
+        "testCaseId": "TC-ORD-01",
+        "title": "Fetch order history with pagination",
+        "status": "PASS",
+        "httpStatus": 200,
+        "ordersCount": 1,
+        "pagination": {
+          "page": 1,
+          "limit": 5,
+          "total": 1,
+          "totalPages": 1,
+          "hasMore": false
+        }
+      },
+      {
+        "testCaseId": "TC-ORD-02",
+        "title": "Filter order history by Payment Method (UPI)",
+        "status": "PASS",
+        "httpStatus": 200,
+        "count": 0,
+        "filterApplied": "upi"
+      },
+      {
+        "testCaseId": "TC-ORD-03",
+        "title": "Order cancellation workflow",
+        "status": "PASS",
+        "httpStatus": 200,
+        "newStatus": "Cancelled"
+      },
+      {
+        "testCaseId": "TC-ORD-04",
+        "title": "Generate and download PDF invoice",
+        "status": "PASS",
+        "httpStatus": 200,
+        "contentType": "application/pdf",
+        "isPdfHeader": true
+      },
+      {
+        "testCaseId": "TC-NOTIF-01",
+        "title": "Register device push token",
+        "status": "PASS",
+        "httpStatus": 200
+      },
+      {
+        "testCaseId": "TC-NOTIF-02",
+        "title": "Update user notification preferences",
+        "status": "PASS",
+        "httpStatus": 200,
+        "preferences": {
+          "pushNotificationsEnabled": true,
+          "devicePushEnabled": true,
+          "orderUpdates": true,
+          "paymentUpdates": true,
+          "wishlistPriceDrops": true,
+          "stockAlerts": true,
+          "promotions": false,
+          "cartReminders": true,
+          "userId": "usr_1795228412279_qa2n6a",
+          "updatedAt": "2026-11-21T02:33:38.808Z"
+        }
+      },
+      {
+        "testCaseId": "TC-NOTIF-03",
+        "title": "Trigger wishlist price drop notification",
+        "status": "PASS",
+        "httpStatus": 200
+      },
+      {
+        "testCaseId": "TC-NOTIF-04",
+        "title": "Background cron scheduler status inspection",
+        "status": "PASS",
+        "httpStatus": 200,
+        "jobsCount": 1
+      },
+      {
+        "testCaseId": "TC-RV-01",
+        "title": "Recently Viewed maximum cap at exactly 20 items",
+        "status": "PASS",
+        "count": 10
+      },
+      {
+        "testCaseId": "TC-THEME-01",
+        "title": "Theme preference update and persistence (dark mode)",
+        "status": "PASS",
+        "httpStatus": 200,
+        "themePreference": "dark"
+      }
+    ],
+    "api": [],
+    "database": [
+      {
+        "testCaseId": "TC-DB-01",
+        "title": "SQLite WAL (Write-Ahead Logging) journal mode verification",
+        "status": "PASS",
+        "journalMode": "wal"
+      },
+      {
+        "testCaseId": "TC-DB-02",
+        "title": "ACID Transaction atomic rollback upon error",
+        "status": "PASS",
+        "initialCount": 2,
+        "rolledBackConfirmed": true
+      }
+    ],
+    "security": [
+      {
+        "testCaseId": "TC-SEC-01",
+        "title": "Sensitive Data Check: passwordHash not exposed in user responses",
+        "status": "PASS",
+        "exposed": false
+      },
+      {
+        "testCaseId": "TC-SEC-02",
+        "title": "JWT Signature Tampering Rejection",
+        "status": "PASS",
+        "httpStatus": 401
+      },
+      {
+        "testCaseId": "TC-SEC-03",
+        "title": "IDOR Prevention: User B cannot delete User A address",
+        "status": "PASS",
+        "httpStatus": 403
+      },
+      {
+        "testCaseId": "TC-SEC-04",
+        "title": "IDOR Prevention: User B cannot access User A order details",
+        "status": "PASS",
+        "httpStatus": 403
+      },
+      {
+        "testCaseId": "TC-SEC-05",
+        "title": "Payment Verification Rejection with forged signature",
+        "status": "PASS",
+        "httpStatus": 400
+      },
+      {
+        "testCaseId": "TC-SEC-06",
+        "title": "SQL injection attack payload rejection / safe handling",
+        "status": "PASS",
+        "httpStatus": 404
+      },
+      {
+        "testCaseId": "TC-SEC-07",
+        "title": "Unauthenticated request rejection (401 Unauthorized)",
+        "status": "PASS",
+        "httpStatus": 401
+      }
+    ],
+    "performance": {
+      "Health Check": {
+        "iterations": 25,
+        "min": 0,
+        "max": 1,
+        "avg": 1,
+        "p50": 1,
+        "p95": 1,
+        "p99": 1
+      },
+      "Product Catalog": {
+        "iterations": 25,
+        "min": 11,
+        "max": 17,
+        "avg": 14,
+        "p50": 14,
+        "p95": 17,
+        "p99": 17
+      },
+      "Categories List": {
+        "iterations": 25,
+        "min": 13,
+        "max": 23,
+        "avg": 19,
+        "p50": 20,
+        "p95": 22,
+        "p99": 23
+      },
+      "Search Query": {
+        "iterations": 25,
+        "min": 11,
+        "max": 20,
+        "avg": 15,
+        "p50": 16,
+        "p95": 18,
+        "p99": 20
+      }
+    }
+  },
+  "defects": []
+}
