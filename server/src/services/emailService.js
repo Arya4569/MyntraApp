@@ -3,7 +3,7 @@ const nodemailer = require('nodemailer');
 let transporter = null;
 
 /**
- * Returns a configured nodemailer transporter for sending real emails
+ * Returns a configured nodemailer transporter for sending real emails locally
  */
 const getTransporter = () => {
   const emailUser = (process.env.EMAIL_USER || 'aryakarande45@gmail.com').trim();
@@ -36,29 +36,10 @@ const getTransporter = () => {
 };
 
 /**
- * Send directly via SMTP (Nodemailer)
+ * Generate responsive Myntra branded HTML email template
  */
-const sendDirectSmtp = async ({ to, otp, name }) => {
-  const cleanEmail = (to || '').trim().toLowerCase();
-  const cleanOtp = (otp || '').toString().trim();
-  const userName = name || 'Fashion Enthusiast';
-
-  const mailTransporter = getTransporter();
-
-  // If credentials are not yet configured in server/.env, simulate safely in dev mode
-  if (!mailTransporter) {
-    console.log(
-      `\x1b[33m[EMAIL OTP DEV SIMULATION]\x1b[0m Recipient: ${cleanEmail} | OTP: \x1b[32m${cleanOtp}\x1b[0m (Configure EMAIL_USER & EMAIL_PASS in server/.env for live delivery)`
-    );
-    return {
-      success: true,
-      live: false,
-      devOtp: cleanOtp,
-      message: 'Email OTP simulated in development mode.',
-    };
-  }
-
-  const htmlContent = `
+const buildHtmlTemplate = ({ userName, cleanOtp }) => {
+  return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -107,6 +88,77 @@ const sendDirectSmtp = async ({ to, otp, name }) => {
     </body>
     </html>
   `;
+};
+
+/**
+ * Send real email via Resend HTTPS REST API (Port 443 - 100% cloud-safe, permanent)
+ */
+const sendViaResend = async ({ to, cleanOtp, userName, htmlContent }) => {
+  const apiKey = (process.env.RESEND_API_KEY || '').trim();
+  if (!apiKey || apiKey.includes('placeholder')) return null;
+
+  const fromSender = (process.env.EMAIL_FROM || 'Myntra Fashion <onboarding@resend.dev>').trim();
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromSender,
+        to: [to],
+        subject: `[Myntra] ${cleanOtp} is your verification OTP`,
+        html: htmlContent,
+        text: `Hello ${userName},\n\nYour Myntra verification OTP is: ${cleanOtp}\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.`,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await res.json();
+    if (res.ok && data.id) {
+      console.log(
+        `\x1b[32m[RESEND REAL-TIME OTP DISPATCHED]\x1b[0m Sent to ${to}. MessageId: ${data.id}`
+      );
+      return {
+        success: true,
+        live: true,
+        messageId: data.id,
+        message: 'OTP delivered to your email in real-time.',
+      };
+    } else {
+      console.warn(`[RESEND API REJECTED]`, data);
+      return null;
+    }
+  } catch (err) {
+    console.warn(`[RESEND HTTPS FAILED] ${err.message}`);
+    return null;
+  }
+};
+
+/**
+ * Send directly via SMTP (Nodemailer) - for Localhost or VM with open SMTP ports
+ */
+const sendDirectSmtp = async ({ to, otp, name, htmlContent }) => {
+  const cleanEmail = (to || '').trim().toLowerCase();
+  const cleanOtp = (otp || '').toString().trim();
+  const userName = name || 'Fashion Enthusiast';
+
+  const mailTransporter = getTransporter();
+
+  if (!mailTransporter) {
+    return {
+      success: true,
+      live: false,
+      devOtp: cleanOtp,
+      message: 'Email OTP simulated in development mode.',
+    };
+  }
 
   try {
     const fromAddress = (process.env.EMAIL_USER || 'aryakarande45@gmail.com').trim();
@@ -115,10 +167,12 @@ const sendDirectSmtp = async ({ to, otp, name }) => {
       to: cleanEmail,
       subject: `[Myntra] ${cleanOtp} is your verification OTP`,
       text: `Hello ${userName},\n\nYour Myntra verification OTP is: ${cleanOtp}\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.`,
-      html: htmlContent,
+      html: htmlContent || buildHtmlTemplate({ userName, cleanOtp }),
     });
 
-    console.log(`\x1b[32m[EMAIL OTP DISPATCHED]\x1b[0m Successfully sent to ${cleanEmail}. MessageId: ${info.messageId}`);
+    console.log(
+      `\x1b[32m[EMAIL SMTP DISPATCHED]\x1b[0m Successfully sent to ${cleanEmail}. MessageId: ${info.messageId}`
+    );
     return {
       success: true,
       live: true,
@@ -126,7 +180,7 @@ const sendDirectSmtp = async ({ to, otp, name }) => {
       message: 'OTP delivered to your email in real-time.',
     };
   } catch (err) {
-    console.error(`\x1b[31m[EMAIL OTP ERROR]\x1b[0m Failed to send email to ${cleanEmail}:`, err.message);
+    console.error(`\x1b[31m[EMAIL SMTP ERROR]\x1b[0m Failed to send email to ${cleanEmail}:`, err.message);
     return {
       success: false,
       live: false,
@@ -137,48 +191,29 @@ const sendDirectSmtp = async ({ to, otp, name }) => {
 
 /**
  * Send a styled, authentic Myntra OTP verification email
- * Relays through HTTPS port 443 on cloud hosts where SMTP ports 465/587 are blocked
+ * Primary: Resend HTTPS REST API (Port 443 - zero cloud port blocking)
+ * Secondary: Direct SMTP (Nodemailer - for local environments)
  */
 exports.sendOtpEmail = async ({ to, otp, name }) => {
   const cleanEmail = (to || '').trim().toLowerCase();
   const cleanOtp = (otp || '').toString().trim();
   const userName = name || 'Fashion Enthusiast';
+  const htmlContent = buildHtmlTemplate({ userName, cleanOtp });
 
-  // 1. If running as local dispatcher, dispatch directly via SMTP
-  if (process.env.IS_LOCAL_DISPATCHER === 'true') {
-    return sendDirectSmtp({ to: cleanEmail, otp: cleanOtp, name: userName });
+  // 1. Primary Cloud Dispatcher: Resend REST API over HTTPS (Port 443)
+  const resendResult = await sendViaResend({
+    to: cleanEmail,
+    cleanOtp,
+    userName,
+    htmlContent,
+  });
+
+  if (resendResult && resendResult.success && resendResult.live) {
+    return resendResult;
   }
 
-  // 2. If a valid external HTTPS relay is explicitly provided (and not an expired trycloudflare url)
-  const relayUrl = (process.env.EMAIL_RELAY_URL || '').trim();
-
-  if (relayUrl && !relayUrl.includes('trycloudflare.com') && !relayUrl.includes('placeholder')) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-      const response = await fetch(relayUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: cleanEmail, otp: cleanOtp, name: userName }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.success && data.live) {
-          console.log(`\x1b[32m[EMAIL RELAY DISPATCHED]\x1b[0m Successfully sent to ${cleanEmail} via HTTPS relay.`);
-          return data;
-        }
-      }
-    } catch (relayErr) {
-      console.warn(`[EMAIL RELAY FALLBACK] Relay failed (${relayErr.message}), falling back to direct SMTP.`);
-    }
-  }
-
-  // 3. Dispatch directly via SMTP with configured 4s socket timeout
-  return sendDirectSmtp({ to: cleanEmail, otp: cleanOtp, name: userName });
+  // 2. Secondary Dispatcher: Direct SMTP via Nodemailer
+  return sendDirectSmtp({ to: cleanEmail, otp: cleanOtp, name: userName, htmlContent });
 };
 
 exports.sendDirectSmtp = sendDirectSmtp;
