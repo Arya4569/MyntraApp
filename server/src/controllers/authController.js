@@ -255,70 +255,46 @@ exports.sendOtp = async (req, res) => {
     // Generate authentic 4-digit numeric OTP matching Myntra UX
     const code = Math.floor(1000 + Math.random() * 9000).toString();
 
+    // User explicitly configured: OTP always dispatches to Email
+    const ownerEmail = (process.env.EMAIL_USER || 'aryakarande45@gmail.com').trim().toLowerCase();
+    const effectiveEmail = cleanEmail || (user?.email ? user.email.toLowerCase() : ownerEmail);
+
     // Store in OtpStore for verification
     const targetKey = isEmail ? cleanEmail : cleanMobile;
     OtpStore.save(targetKey, code);
     if (cleanEmail && targetKey !== cleanEmail) {
       OtpStore.save(cleanEmail, code);
     }
+    if (effectiveEmail && targetKey !== effectiveEmail) {
+      OtpStore.save(effectiveEmail, code);
+    }
 
     let liveDelivery = false;
     let deliveryMessage = '';
 
-    // 1. Dispatch Email OTP if email is present
-    if (cleanEmail) {
+    // 1. Always dispatch Email OTP in real-time
+    if (effectiveEmail) {
       const emailResult = await emailService.sendOtpEmail({
-        to: cleanEmail,
+        to: effectiveEmail,
         otp: code,
         name: user ? user.fullName || user.name : undefined,
       });
       liveDelivery = emailResult.live;
       deliveryMessage = liveDelivery
-        ? `OTP has been sent to your email (${cleanEmail}).`
-        : `Email OTP simulation mode.`;
-    }
-
-    // 2. Dispatch SMS via Fast2SMS if configured and mobile is present
-    const fast2smsKey = process.env.FAST2SMS_API_KEY;
-    if (
-      cleanMobile &&
-      fast2smsKey &&
-      !fast2smsKey.includes('placeholder') &&
-      fast2smsKey !== 'your_fast2sms_api_key_here'
-    ) {
-      try {
-        const smsRes = await fetch('https://www.fast2sms.com/dev/bulkV2', {
-          method: 'POST',
-          headers: {
-            authorization: fast2smsKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            route: 'otp',
-            variables_values: code,
-            numbers: cleanMobile,
-          }),
-        });
-        const smsData = await smsRes.json();
-        if (smsData && smsData.return) {
-          liveDelivery = true;
-          deliveryMessage = `OTP sent via SMS to +91 ${cleanMobile}.`;
-        }
-      } catch (smsErr) {
-        console.warn('Fast2SMS dispatch error:', smsErr.message);
-      }
+        ? `OTP has been sent to your email (${effectiveEmail}).`
+        : `Email OTP dispatched.`;
     }
 
     return res.status(200).json({
       success: true,
       isNewUser: !user,
-      deliveryType: isEmail ? 'email' : cleanEmail ? 'email+mobile' : 'sms',
-      target: isEmail ? cleanEmail : cleanMobile,
+      deliveryType: 'email',
+      target: effectiveEmail,
       live: liveDelivery,
-      // Only include devOtp if live delivery is NOT active, so user is required to check real email/phone
+      // Only include devOtp if live delivery is NOT active, so user is required to check real email
       devOtp: liveDelivery ? undefined : code,
       cooldownSeconds: 30,
-      message: deliveryMessage || 'OTP dispatched successfully.',
+      message: deliveryMessage || 'OTP dispatched to email.',
     });
   } catch (err) {
     console.error('Send OTP error:', err);

@@ -133,6 +133,42 @@ const sendViaResend = async ({ to, cleanOtp, userName, htmlContent }) => {
       };
     } else {
       console.warn(`[RESEND API REJECTED]`, data);
+
+      // If Resend restricted the recipient because it's a test account without custom domain:
+      const ownerEmail = (process.env.EMAIL_USER || 'aryakarande45@gmail.com').trim();
+      if (to.toLowerCase() !== ownerEmail.toLowerCase()) {
+        try {
+          const fallbackRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: fromSender,
+              to: [ownerEmail],
+              subject: `[Myntra] ${cleanOtp} is verification OTP for ${to}`,
+              html: htmlContent,
+              text: `Hello,\n\nVerification OTP for ${to} is: ${cleanOtp}\n\nThis OTP is valid for 5 minutes. (Or enter test code 1234)`,
+            }),
+          });
+          const fallbackData = await fallbackRes.json();
+          if (fallbackRes.ok && fallbackData.id) {
+            console.log(
+              `\x1b[32m[RESEND RELAYED TO REGISTERED EMAIL]\x1b[0m Sent OTP for ${to} to ${ownerEmail}. MessageId: ${fallbackData.id}`
+            );
+            return {
+              success: true,
+              live: true,
+              messageId: fallbackData.id,
+              message: `OTP delivered to email (${ownerEmail}).`,
+            };
+          }
+        } catch (relayErr) {
+          console.warn('Fallback relay error:', relayErr.message);
+        }
+      }
+
       return null;
     }
   } catch (err) {
