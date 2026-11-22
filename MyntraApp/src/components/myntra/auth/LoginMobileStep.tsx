@@ -34,8 +34,10 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
   const [inputTouched, setInputTouched] = useState(false);
   const [showHelpAlert, setShowHelpAlert] = useState(false);
 
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const isValidInput = isValidEmail;
+  const cleanInput = email.trim();
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanInput);
+  const isValidMobile = /^[6-9]\d{9}$/.test(cleanInput.replace(/\D/g, ''));
+  const isValidInput = isValidEmail || isValidMobile;
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
@@ -46,11 +48,11 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
 
   const handleSubmit = () => {
     if (isValidInput && !isLoading) {
-      onContinue(email.trim().toLowerCase());
+      onContinue(cleanInput.toLowerCase());
     }
   };
 
-  const showValidationError = inputTouched && email.length > 0 && !isValidEmail;
+  const showValidationError = inputTouched && email.length > 0 && !isValidInput;
 
   return (
     <View style={styles.container}>
@@ -89,16 +91,14 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
         </View>
 
         <Text style={styles.inputGuideSubtitle}>
-          {mode === 'signup'
-            ? 'Enter your Email to receive a verification OTP and create account'
-            : 'Enter your registered Email to receive a verification OTP'}
+          Enter your Email or Mobile number to receive verification OTP
         </Text>
 
-        {/* Clean Email Input Field */}
+        {/* Clean Email / Mobile Input Field */}
         <View style={styles.inputWrapper}>
           <View style={styles.inputIconPill}>
             <Ionicons
-              name="mail-outline"
+              name={isValidMobile ? 'call-outline' : 'mail-outline'}
               size={18}
               color={MyntraColors.textSecondary}
             />
@@ -107,9 +107,9 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
 
           <TextInput
             style={styles.input}
-            placeholder="Enter your Email *"
+            placeholder="Enter Email or 10-digit Mobile *"
             placeholderTextColor={MyntraColors.textMuted}
-            keyboardType="email-address"
+            keyboardType="default"
             autoCapitalize="none"
             autoCorrect={false}
             value={email}
@@ -119,9 +119,9 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
 
           {email.length > 3 && (
             <Ionicons
-              name={isValidEmail ? 'checkmark-circle' : 'alert-circle'}
+              name={isValidInput ? 'checkmark-circle' : 'alert-circle'}
               size={20}
-              color={isValidEmail ? MyntraColors.ratingGreen : '#e53935'}
+              color={isValidInput ? MyntraColors.ratingGreen : '#e53935'}
             />
           )}
         </View>
@@ -129,7 +129,7 @@ export const LoginMobileStep: React.FC<LoginMobileStepProps> = ({
         {/* Validation Error Message */}
         {showValidationError && (
           <Text style={styles.errorText}>
-            Please enter a valid email address (e.g. name@gmail.com).
+            Please enter a valid email address or 10-digit mobile number.
           </Text>
         )}
 

@@ -136,10 +136,15 @@ class StoreService {
     bankOffers: BankOffer[];
   }> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
       const response = await fetch(`${getApiBaseUrl()}/home`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const json = await response.json();
@@ -459,10 +464,15 @@ class StoreService {
       if (filters?.limit) params.append('limit', filters.limit.toString());
 
       const qs = params.toString() ? `?${params.toString()}` : '';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
       const response = await fetch(`${getApiBaseUrl()}/products${qs}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const json = await response.json();

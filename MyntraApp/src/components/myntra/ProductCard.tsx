@@ -26,6 +26,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onPressCard,
 }) => {
   const { colors, isDark } = useTheme();
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const fallbackUri = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80';
 
   return (
     <TouchableOpacity
@@ -45,9 +47,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           { backgroundColor: colors.surfaceSecondary },
         ]}>
         <Image
-          source={{ uri: product.image }}
+          source={{ uri: imageFailed ? fallbackUri : (product.image || fallbackUri) }}
           style={styles.image}
           resizeMode="cover"
+          onError={() => setImageFailed(true)}
         />
 
         {/* Rating Pill Overlay */}

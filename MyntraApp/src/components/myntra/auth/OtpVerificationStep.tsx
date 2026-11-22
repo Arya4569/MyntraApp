@@ -118,11 +118,9 @@ export const OtpVerificationStep: React.FC<OtpVerificationStepProps> = ({
           </TouchableOpacity>
         </View>
 
-        {isEmail && !devOtp && (
-          <Text style={styles.inboxHintText}>
-            📩 Check your inbox & spam folder for the 4-digit code
-          </Text>
-        )}
+        <Text style={styles.inboxHintText}>
+          📩 Check your email inbox & spam folder for the 4-digit code (Test code: 1234)
+        </Text>
       </View>
 
       {/* Demo / Web Fallback OTP Banner */}
