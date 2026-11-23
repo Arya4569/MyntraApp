@@ -54,6 +54,48 @@ import { pushNotificationService } from '@/services/push-notification-service';
 import { storeService } from '@/services/store-service';
 import { CartItem, FilterState, Order, RecommendationProduct } from '@/types/store';
 
+const MARATHI_HINDI_DICTIONARY: Record<string, string> = {
+  'शर्ट': 'shirt',
+  'टी-शर्ट': 't-shirt',
+  'टी शर्ट': 't-shirt',
+  'कुर्ता': 'kurta',
+  'कुर्ती': 'kurti',
+  'शूज': 'shoes',
+  'जूते': 'shoes',
+  'जीन्स': 'jeans',
+  'जींस': 'jeans',
+  'साडी': 'saree',
+  'साड़ी': 'saree',
+  'ड्रेस': 'dress',
+  'पँट': 'pants',
+  'पँट्स': 'pants',
+  'बूट': 'shoes',
+  'चप्पल': 'sandals',
+  'सँडल': 'sandals',
+  'सैंडल': 'sandals',
+  'घड्याळ': 'watch',
+  'घडी': 'watch',
+  'घड़ी': 'watch',
+  'बॅग': 'bag',
+  'थैली': 'bag',
+  'जॅकेट': 'jacket',
+  'जैकेट': 'jacket',
+  'काळा': 'black',
+  'काळी': 'black',
+  'काळे': 'black',
+  'काला': 'black',
+  'सफेद': 'white',
+  'पांढरा': 'white',
+  'पांढरी': 'white',
+  'लाल': 'red',
+  'निळा': 'blue',
+  'निळी': 'blue',
+  'नीला': 'blue',
+  'गुलाबी': 'pink',
+  'हिरवा': 'green',
+  'हरा': 'green',
+};
+
 const DEFAULT_FILTERS: FilterState = {
   brands: [],
   sizes: [],
@@ -856,14 +898,23 @@ export default function HomeScreen() {
         return false;
       }
 
-      // 3. Search query filter (matches brand, name, category, or subcategory)
-      const query = searchQuery.trim().toLowerCase();
-      if (query !== '') {
+      // 3. Search query filter (matches brand, name, category, or subcategory with multi-term & Marathi/Hindi support)
+      const rawQuery = searchQuery.trim().toLowerCase();
+      if (rawQuery !== '') {
+        let normalizedQuery = rawQuery;
+        for (const [key, val] of Object.entries(MARATHI_HINDI_DICTIONARY)) {
+          if (normalizedQuery.includes(key)) {
+            normalizedQuery = normalizedQuery.replace(new RegExp(key, 'g'), val);
+          }
+        }
+
+        const queryTerms = normalizedQuery.split(/\s+/).filter(Boolean);
+        const searchableText = `${item.name} ${item.brand} ${item.category} ${item.subcategory} ${(item as any).description || ''}`.toLowerCase();
+
         const matchesQuery =
-          item.name.toLowerCase().includes(query) ||
-          item.brand.toLowerCase().includes(query) ||
-          item.category.toLowerCase().includes(query) ||
-          item.subcategory.toLowerCase().includes(query);
+          searchableText.includes(rawQuery) ||
+          (queryTerms.length > 0 && queryTerms.every((term) => searchableText.includes(term)));
+
         if (!matchesQuery) return false;
       }
 
