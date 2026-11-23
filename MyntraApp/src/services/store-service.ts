@@ -137,7 +137,7 @@ class StoreService {
   }> {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       const response = await fetch(`${getApiBaseUrl()}/home`, {
         method: 'GET',
@@ -465,7 +465,7 @@ class StoreService {
 
       const qs = params.toString() ? `?${params.toString()}` : '';
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       const response = await fetch(`${getApiBaseUrl()}/products${qs}`, {
         method: 'GET',

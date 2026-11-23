@@ -41,6 +41,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   const [pulseAnim] = useState(new Animated.Value(1));
 
   const recognitionRef = useRef<any>(null);
+  const isRecognizingRef = useRef<boolean>(false);
   const inputRef = useRef<TextInput>(null);
 
   // Check speech recognition capability via useMemo (avoids setState in effect)
@@ -55,12 +56,14 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
 
   const stopNativeRecognitionOnly = useCallback(() => {
     if (recognitionRef.current) {
+      const rec = recognitionRef.current;
+      recognitionRef.current = null;
+      isRecognizingRef.current = false;
       try {
-        recognitionRef.current.stop();
+        rec.abort();
       } catch {
         // Ignore stop error
       }
-      recognitionRef.current = null;
     }
   }, []);
 
@@ -78,19 +81,17 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
 
   const startSpeechRecognition = useCallback(() => {
     setErrorMsg('');
+    if (isRecognizingRef.current) {
+      return;
+    }
+
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
       if (SpeechRecognition) {
         try {
-          if (recognitionRef.current) {
-            try {
-              recognitionRef.current.abort();
-            } catch {
-              // Ignore abort error
-            }
-          }
+          stopNativeRecognitionOnly();
 
           const recognition = new SpeechRecognition();
           recognition.continuous = false;
@@ -99,6 +100,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
           recognition.lang = 'en-IN'; // Optimized for Indian English & mixed clothing terms
 
           recognition.onstart = () => {
+            isRecognizingRef.current = true;
             setIsListening(true);
             setErrorMsg('');
           };
@@ -123,6 +125,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
 
             if (finalTranscript.trim()) {
               setIsListening(false);
+              isRecognizingRef.current = false;
               setTimeout(() => {
                 onApplyVoiceQuery(finalTranscript.trim());
                 handleClose();
@@ -131,43 +134,50 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
           };
 
           recognition.onerror = (event: any) => {
-            console.warn('Speech recognition error:', event.error);
+            isRecognizingRef.current = false;
+            setIsListening(false);
+            if (event.error === 'aborted') {
+              // Expected normal cancellation on modal close or toggle
+              return;
+            }
             if (event.error === 'not-allowed') {
               setErrorMsg('Microphone access denied. Please allow microphone in browser.');
             } else if (event.error === 'no-speech') {
-              setErrorMsg('No speech detected. Tap microphone to try again.');
-            } else if (event.error !== 'aborted') {
+              setErrorMsg('No speech detected. Tap microphone to speak.');
+            } else {
               setErrorMsg(`Speech error: ${event.error || 'Please try again'}`);
             }
-            setIsListening(false);
           };
 
           recognition.onend = () => {
+            isRecognizingRef.current = false;
             setIsListening(false);
           };
 
           recognitionRef.current = recognition;
           recognition.start();
-          setIsListening(true);
           return;
         } catch (e: any) {
-          console.warn('Failed to start SpeechRecognition:', e);
-          setErrorMsg('Could not activate microphone.');
+          isRecognizingRef.current = false;
           setIsListening(false);
+          if (e?.name !== 'AbortError') {
+            setErrorMsg('Tap microphone to start voice search.');
+          }
+          return;
         }
       }
     }
 
     // Default state: activate listening simulation/focus
     setIsListening(true);
-  }, [handleClose, onApplyVoiceQuery]);
+  }, [handleClose, onApplyVoiceQuery, stopNativeRecognitionOnly]);
 
   // Handle modal visibility and speech session lifecycle
   useEffect(() => {
     if (visible) {
       const timer = setTimeout(() => {
         startSpeechRecognition();
-      }, 50);
+      }, 100);
       return () => {
         clearTimeout(timer);
         stopNativeRecognitionOnly();
@@ -186,12 +196,12 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
           Animated.timing(pulseAnim, {
             toValue: 1.35,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ])
       );

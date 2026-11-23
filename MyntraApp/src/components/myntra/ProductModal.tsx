@@ -94,12 +94,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       Animated.timing(heartScale, {
         toValue: 1.3,
         duration: 120,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.spring(heartScale, {
         toValue: 1,
         friction: 4,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
   };

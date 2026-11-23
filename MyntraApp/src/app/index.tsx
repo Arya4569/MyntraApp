@@ -166,67 +166,73 @@ export default function HomeScreen() {
     };
     loadUnreadCount();
 
-    // 2. Register push token if user is logged in
-    if (isAuthenticated && user?.id) {
-      pushNotificationService
-        .registerForPushNotificationsAsync()
-        .then(async ({ token }) => {
-          if (token && isMounted) {
-            const details = pushNotificationService.getDeviceDetails();
-            await storeService.registerDeviceToken(token, details);
-            await storeService.syncNotificationPreferencesOnLogin();
-          }
-        })
-        .catch((e) => console.warn('Push registration warning:', e));
-    }
+    let notifSub: { remove: () => void } | null = null;
+    let responseSub: { remove: () => void } | null = null;
 
-    // 3. Foreground push notification listener
-    const notifSub = pushNotificationService.addNotificationReceivedListener((notification) => {
-      if (!isMounted) return;
-      setUnreadNotificationCount((prev) => prev + 1);
-      const title = notification.request.content.title;
-      if (title) {
-        showToast(`🔔 ${title}`);
+    // Push Notifications only active on Native iOS/Android (avoids web unsupported warnings)
+    if (Platform.OS !== 'web') {
+      // 2. Register push token if user is logged in
+      if (isAuthenticated && user?.id) {
+        pushNotificationService
+          .registerForPushNotificationsAsync()
+          .then(async ({ token }) => {
+            if (token && isMounted) {
+              const details = pushNotificationService.getDeviceDetails();
+              await storeService.registerDeviceToken(token, details);
+              await storeService.syncNotificationPreferencesOnLogin();
+            }
+          })
+          .catch((e) => console.warn('Push registration warning:', e));
       }
-    });
 
-    // 4. Notification tap listener (background & foreground)
-    const responseSub = pushNotificationService.addNotificationResponseReceivedListener((response) => {
-      if (!isMounted) return;
-      const data = response.notification.request.content.data;
-      if (!data) return;
+      // 3. Foreground push notification listener
+      notifSub = pushNotificationService.addNotificationReceivedListener((notification) => {
+        if (!isMounted) return;
+        setUnreadNotificationCount((prev) => prev + 1);
+        const title = notification.request.content.title;
+        if (title) {
+          showToast(`🔔 ${title}`);
+        }
+      });
 
-      if (data.category === 'order' || data.orderId) {
-        setActiveTab('profile');
-        setOpenOrdersDirectly(true);
-      } else if (data.category === 'wishlist' || data.productId) {
-        const targetProd = PRODUCTS.find((p) => p.id === data.productId);
-        if (targetProd) setActiveProductModal(targetProd);
-      } else if (data.category === 'cart') {
-        setIsBagModalVisible(true);
-      } else if (data.category === 'promotion') {
-        setIsBankOffersVisible(true);
-      }
-    });
+      // 4. Notification tap listener (background & foreground)
+      responseSub = pushNotificationService.addNotificationResponseReceivedListener((response) => {
+        if (!isMounted) return;
+        const data = response.notification.request.content.data;
+        if (!data) return;
 
-    // 5. Cold start notification tap handling
-    pushNotificationService.getLastNotificationResponse().then((res) => {
-      if (res && isMounted) {
-        const data = res.notification.request.content.data;
-        if (data?.category === 'order' || data?.orderId) {
+        if (data.category === 'order' || data.orderId) {
           setActiveTab('profile');
           setOpenOrdersDirectly(true);
-        } else if (data?.productId) {
+        } else if (data.category === 'wishlist' || data.productId) {
           const targetProd = PRODUCTS.find((p) => p.id === data.productId);
           if (targetProd) setActiveProductModal(targetProd);
+        } else if (data.category === 'cart') {
+          setIsBagModalVisible(true);
+        } else if (data.category === 'promotion') {
+          setIsBankOffersVisible(true);
         }
-      }
-    });
+      });
+
+      // 5. Cold start notification tap handling
+      pushNotificationService.getLastNotificationResponse().then((res) => {
+        if (res && isMounted) {
+          const data = res.notification.request.content.data;
+          if (data?.category === 'order' || data?.orderId) {
+            setActiveTab('profile');
+            setOpenOrdersDirectly(true);
+          } else if (data?.productId) {
+            const targetProd = PRODUCTS.find((p) => p.id === data.productId);
+            if (targetProd) setActiveProductModal(targetProd);
+          }
+        }
+      });
+    }
 
     return () => {
       isMounted = false;
-      notifSub.remove();
-      responseSub.remove();
+      notifSub?.remove?.();
+      responseSub?.remove?.();
     };
   }, [isAuthenticated, user?.id, showToast]);
 
